@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AvacaDO — The Rebel Road</title><link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main id="app">
+  <section id="startScreen" class="screen parchment">
+    <p class="eyebrow">A medieval rebellion against the green crown</p>
+    <h1>AVACA<span>DO</span></h1><p class="subtitle">The Rebel Road</p>
+    <div class="start-art"><i>🥑</i><b>VS</b><i>🍅</i></div>
+    <p class="intro">Race across the royal realm before the Cado King’s 30-turn doomsday clock reaches midnight.</p>
+    <button id="newGameBtn" class="primary">Begin the Rebellion</button>
+    <button id="continueBtn" class="secondary hidden">Continue Saved Game</button>
+    <button data-open="rules" class="linkbtn">Read the Royal Decree (Rules)</button>
+  </section>
+
+  <section id="setupScreen" class="screen parchment hidden">
+    <h2>Gather the Rebels</h2><p>Choose up to five champions. Empty seats become computer rebels.</p>
+    <div id="playerSetup" class="setup-grid"></div>
+    <div class="setup-options"><label>Doomsday <select id="difficulty"><option value="easy">Easy — 36 turns</option><option value="normal" selected>Normal — 30 turns</option><option value="hard">Hard — 24 turns</option></select></label><label><input type="checkbox" id="fillAi" checked> Fill empty seats with AI</label></div>
+    <div class="row"><button id="backBtn" class="secondary">Back</button><button id="startBtn" class="primary">Start Game</button></div>
+  </section>
+
+  <section id="gameScreen" class="hidden">
+    <header><div class="brand">AVACA<span>DO</span></div><div id="turnBanner">Preparing the rebellion…</div><div class="header-controls"><button id="musicBtn" title="Toggle music">♫ Music</button><button id="muteBtn" title="Toggle sound">🔊</button><button data-open="rules">Rules</button><button id="pauseBtn">Pause</button></div></header>
+    <div class="game-layout">
+      <aside class="panel players-panel"><h3>Rebel Roster</h3><div id="playerList"></div></aside>
+      <section class="board-wrap"><div id="board" aria-label="AvacaDO game board"><div id="clock"><div class="crown">♛</div><strong>DOOMSDAY</strong><span id="clockNumber">30</span><small>turns remain</small><div class="clock-bar"><i id="clockFill"></i></div><em id="clockWarning">The Cado King watches.</em></div></div></section>
+      <aside class="panel action-panel"><h3>Turn Actions</h3><div id="dice" class="dice"><b>?</b><b>?</b></div><p id="actionText">Roll when it is your turn.</p><button id="rollBtn" class="primary">Roll Two Dice</button><button id="endBtn" class="secondary" disabled>End Turn</button><hr><h3>Rebel Market</h3><div id="shop"></div><p class="tiny">Spend points only on your own turn.</p></aside>
+    </div>
+    <footer><button id="restartBtn">Restart</button><button id="resetSaveBtn">Reset Save</button><span>75 spaces · 20 event spaces · local multiplayer</span></footer>
+  </section>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button id="closeModal" class="close">×</button><div id="modalContent"></div></div></div>
+</main><script src="game.js"></script>
+</body></html>
