@@ -30,7 +30,7 @@ export default {
     return new Response(body, {
       headers: {
         "content-type": contentTypes[key] || "application/octet-stream",
-        "cache-control": key === "index.html" ? "no-store" : "public, max-age=31536000, immutable"
+        "cache-control": "no-store"
       }
     });
   }
