@@ -95,6 +95,10 @@ function load() {
   state.machines = { ...base.machines, ...state.machines };
   state.prestige = { ...base.prestige, ...state.prestige };
   state.order = { ...base.order, ...state.order };
+  state.factory = clamp(Number(state.factory) || 0, 0, FACTORIES.length - 1);
+  state.coins = Math.max(0, Number(state.coins) || 0);
+  state.tokens = Math.max(0, Number(state.tokens) || 0);
+  state.progress = Math.max(0, Number(state.progress) || 0);
 }
 
 function save() {
@@ -280,7 +284,8 @@ function spawnProduct(level, x, y, options = {}) {
 function updateProductElement(product) {
   product.el.className = `product lvl${product.level}${product.el.classList.contains("dragging") ? " dragging" : ""}`;
   product.el.dataset.level = String(product.level);
-  product.el.dataset.mark = PRODUCT_MARKS[state.factory][product.level - 1];
+  const marks = PRODUCT_MARKS[state.factory] || PRODUCT_MARKS[0];
+  product.el.dataset.mark = marks[product.level - 1] || PRODUCT_NAMES[product.level][0] || "?";
   product.el.setAttribute("aria-label", PRODUCT_NAMES[product.level]);
 }
 
@@ -884,3 +889,8 @@ window.addEventListener("beforeunload", () => {
 if (localStorage.getItem(SAVE_KEY)) {
   $("#continueBtn").classList.remove("hidden");
 }
+
+window.tinyFactoryDebug = {
+  countProducts: () => items.length,
+  testDrop: () => dropItem(true)
+};

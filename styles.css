@@ -344,7 +344,7 @@ button.wallet-chip { border: 0; }
   animation: beltMove .8s linear infinite;
 }
 .belt.slow .belt-stripes { animation-duration: 1.7s; }
-.products { position: absolute; inset: 0; }
+.products { position: absolute; inset: 0; z-index: 2; }
 .shipping-gate {
   position: absolute;
   top: 72px;
