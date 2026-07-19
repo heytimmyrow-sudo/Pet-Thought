@@ -1,38 +1,148 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AvacaDO — The Rebel Road</title><link rel="stylesheet" href="styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Tiny Factory Drop</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<main id="app">
-  <section id="startScreen" class="screen parchment">
-    <p class="eyebrow">A medieval rebellion against the green crown</p>
-    <h1>AVACA<span>DO</span></h1><p class="subtitle">The Rebel Road</p>
-    <div class="start-art"><i>🥑</i><b>VS</b><i>🍅</i></div>
-    <p class="intro">Race across the royal realm before the Cado King’s 30-turn doomsday clock reaches midnight.</p>
-    <button id="newGameBtn" class="primary">Begin the Rebellion</button>
-    <button id="continueBtn" class="secondary hidden">Continue Saved Game</button>
-    <button data-open="rules" class="linkbtn">Read the Royal Decree (Rules)</button>
-  </section>
+  <main id="app" class="theme-toy">
+    <section id="startScreen" class="start-screen">
+      <div class="start-card">
+        <div class="gear-logo" aria-hidden="true">TF</div>
+        <p class="eyebrow">Pocket production line</p>
+        <h1>Tiny Factory Drop</h1>
+        <p class="start-copy">Drop scraps, merge better products, ship orders, and unlock tiny factories.</p>
+        <button id="playBtn" class="btn btn-primary btn-large" type="button">Start Factory</button>
+        <button id="continueBtn" class="btn btn-soft hidden" type="button">Continue Save</button>
+        <p class="micro">Works offline. Saves on this browser.</p>
+      </div>
+    </section>
 
-  <section id="setupScreen" class="screen parchment hidden">
-    <h2>Gather the Rebels</h2><p>Choose up to four champions. Empty seats become computer rebels. The avocado is the extra token.</p>
-    <div id="playerSetup" class="setup-grid"></div>
-    <div class="setup-options"><label>Doomsday <select id="difficulty"><option value="easy">Easy — 36 turns</option><option value="normal" selected>Normal — 30 turns</option><option value="hard">Hard — 24 turns</option></select></label><label><input type="checkbox" id="fillAi" checked> Fill empty seats with AI</label></div>
-    <div class="row"><button id="backBtn" class="secondary">Back</button><button id="startBtn" class="primary">Start Game</button></div>
-  </section>
+    <section id="gameScreen" class="game-screen hidden">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">TF</span>
+          <span>Tiny Factory</span>
+          <b id="factoryName">Toy Factory</b>
+        </div>
+        <div class="wallet">
+          <button id="tokenShopBtn" class="wallet-chip" type="button" aria-label="Open Factory Token shop">Token <b id="tokenCount">0</b></button>
+          <span class="wallet-chip">Coin <b id="coinCount">0</b></span>
+        </div>
+        <div class="icon-row" aria-label="Game controls">
+          <button id="soundBtn" class="icon-btn" type="button" aria-label="Toggle sound effects">SFX</button>
+          <button id="musicBtn" class="icon-btn" type="button" aria-label="Toggle music">MUS</button>
+          <button id="pauseBtn" class="icon-btn" type="button" aria-label="Pause">II</button>
+          <button id="settingsBtn" class="icon-btn" type="button" aria-label="Settings">SET</button>
+        </div>
+      </header>
 
-  <section id="gameScreen" class="hidden">
-    <header><div class="brand">AVACA<span>DO</span></div><div id="turnBanner">Preparing the rebellion…</div><div class="header-controls"><button id="musicBtn" title="Toggle music">♫ Music</button><button id="muteBtn" title="Toggle sound">🔊</button><button data-open="rules">Rules</button><button id="pauseBtn">Pause</button></div></header>
-    <div class="game-layout">
-      <aside class="panel players-panel"><h3>Rebel Roster</h3><div id="playerList"></div></aside>
-      <section class="board-wrap"><div id="board" aria-label="AvacaDO game board"><div id="clock"><div class="crown">♛</div><strong>DOOMSDAY</strong><span id="clockNumber">30</span><small>turns remain</small><div class="clock-bar"><i id="clockFill"></i></div><em id="clockWarning">The Cado King watches.</em></div></div></section>
-      <aside class="panel action-panel"><h3>Turn Actions</h3><div id="dice" class="dice"><b>?</b><b>?</b></div><p id="actionText">Roll when it is your turn.</p><button id="rollBtn" class="primary">Roll Two Dice</button><button id="endBtn" class="secondary" disabled>End Turn</button><hr><h3>Rebel Market</h3><div id="shop"></div><p class="tiny">Spend points only on your own turn.</p></aside>
+      <div class="layout">
+        <aside class="column left-column">
+          <section class="panel order-panel">
+            <div class="panel-title">
+              <span>Customer Order</span>
+              <button id="orderInfoBtn" class="tiny-btn" type="button" aria-label="Order help">?</button>
+            </div>
+            <h2 id="orderTitle">Warm up the line</h2>
+            <div class="bar" aria-label="Order progress"><i id="orderFill"></i></div>
+            <p id="orderProgress">0 / 0</p>
+            <button id="claimOrderBtn" class="btn btn-primary hidden" type="button">Claim Reward</button>
+          </section>
+
+          <section class="panel route-panel">
+            <div class="panel-title">Factory Route</div>
+            <div id="factoryList" class="factory-list"></div>
+            <div class="bar"><i id="factoryFill"></i></div>
+            <p id="factoryProgressText">0 / 100 shipments</p>
+          </section>
+        </aside>
+
+        <section class="play-column">
+          <div id="tutorial" class="tutorial hidden">
+            <b id="tutorialTitle">Drop an item</b>
+            <span id="tutorialText">Tap Drop Item to place Scrap on the conveyor.</span>
+            <div>
+              <button id="tutorialNextBtn" class="btn btn-small btn-primary" type="button">Next</button>
+              <button id="tutorialSkipBtn" class="btn btn-small btn-soft" type="button">Skip</button>
+            </div>
+          </div>
+
+          <div class="factory-scene" aria-hidden="true">
+            <div class="sun"></div>
+            <div class="cloud cloud-a"></div>
+            <div class="cloud cloud-b"></div>
+            <div class="building"><span id="buildingLabel">TOY<br>WORKS</span><i></i></div>
+            <div class="box-stack"><span></span><span></span><span></span></div>
+          </div>
+
+          <div id="beltWrap" class="belt-wrap">
+            <div class="machine paint" data-machine="paint">
+              <div class="machine-head"></div><b>Paint</b><small id="paintLabel">Locked</small>
+            </div>
+            <div class="machine upgrade" data-machine="upgrade">
+              <div class="machine-head"></div><b>Upgrade</b><small id="upgradeLabel">Locked</small>
+            </div>
+            <div class="machine duplicate" data-machine="duplicate">
+              <div class="machine-head"></div><b>Copy</b><small id="duplicateLabel">Locked</small>
+            </div>
+            <div class="machine scanner" data-machine="scanner">
+              <div class="machine-head"></div><b>Scan</b><small id="scannerLabel">Locked</small>
+            </div>
+
+            <div id="belt" class="belt">
+              <div class="belt-stripes"></div>
+              <div id="products" class="products"></div>
+            </div>
+            <div id="shippingGate" class="shipping-gate"><b>SHIP</b><span>&gt;</span></div>
+            <div id="blocked" class="blocked hidden">Line full. Merge to clear space.</div>
+          </div>
+
+          <div id="floatLayer" class="float-layer"></div>
+          <div id="particleLayer" class="particle-layer"></div>
+
+          <div class="drop-row">
+            <button id="dropBtn" class="drop-btn" type="button">
+              <span>+</span> Drop Item <i id="cooldownFill"></i>
+            </button>
+            <p id="hint">Drop Scrap, then drag matching products together.</p>
+          </div>
+        </section>
+
+        <aside class="column right-column">
+          <section class="panel upgrades-panel">
+            <div class="panel-title">
+              <span>Upgrades</span>
+              <button id="upgradeInfoBtn" class="tiny-btn" type="button" aria-label="Upgrade help">?</button>
+            </div>
+            <div id="upgradeList"></div>
+          </section>
+
+          <section class="panel machine-panel">
+            <div class="panel-title">Machines</div>
+            <div id="machineList"></div>
+          </section>
+
+          <button id="prestigeBtn" class="btn prestige-btn" type="button">Factory Reset</button>
+        </aside>
+      </div>
+
+      <footer class="footer">
+        <span id="saveStatus">Saved</span>
+        <span id="factoryMechanicText">Toy Factory: combo orders give extra progress.</span>
+        <button id="helpBtn" class="link-btn" type="button">How to play</button>
+      </footer>
+    </section>
+
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-card">
+        <button id="modalCloseBtn" class="close-btn" type="button" aria-label="Close">x</button>
+        <div id="modalContent"></div>
+      </div>
     </div>
-    <footer><button id="restartBtn">Restart</button><button id="resetSaveBtn">Reset Save</button><span>75 spaces · 20 event spaces · local multiplayer</span></footer>
-  </section>
-
-  <div id="modal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button id="closeModal" class="close">×</button><div id="modalContent"></div></div></div>
-</main><script src="game.js?v=four-players-extra-token"></script>
-</body></html>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
