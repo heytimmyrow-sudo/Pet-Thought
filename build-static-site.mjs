@@ -1,21 +1,29 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
-const fileNames = [
+const textFileNames = [
   "index.html",
   "styles.css",
   "game.js"
 ];
+const binaryFileNames = [
+  "app-photo.png"
+];
 
-const files = Object.fromEntries(await Promise.all(
-  fileNames.map(async (name) => [name, await readFile(name, "utf8")])
+const textFiles = Object.fromEntries(await Promise.all(
+  textFileNames.map(async (name) => [name, await readFile(name, "utf8")])
+));
+const binaryFiles = Object.fromEntries(await Promise.all(
+  binaryFileNames.map(async (name) => [name, (await readFile(name)).toString("base64")])
 ));
 
-const worker = `const files = ${JSON.stringify(files)};
+const worker = `const textFiles = ${JSON.stringify(textFiles)};
+const binaryFiles = ${JSON.stringify(binaryFiles)};
 
 const contentTypes = {
   "index.html": "text/html; charset=utf-8",
   "styles.css": "text/css; charset=utf-8",
-  "game.js": "text/javascript; charset=utf-8"
+  "game.js": "text/javascript; charset=utf-8",
+  "app-photo.png": "image/png"
 };
 
 export default {
@@ -28,20 +36,31 @@ export default {
     }
 
     const key = path.replace(/^\\//, "");
-    const body = files[key];
+    const textBody = textFiles[key];
 
-    if (!body) {
-      return new Response(files["index.html"], {
+    if (textBody !== undefined) {
+      return new Response(textBody, {
         headers: {
-          "content-type": contentTypes["index.html"],
+          "content-type": contentTypes[key] || "text/plain; charset=utf-8",
           "cache-control": "no-store"
         }
       });
     }
 
-    return new Response(body, {
+    const binaryBody = binaryFiles[key];
+    if (binaryBody !== undefined) {
+      const bytes = Uint8Array.from(atob(binaryBody), (char) => char.charCodeAt(0));
+      return new Response(bytes, {
+        headers: {
+          "content-type": contentTypes[key] || "application/octet-stream",
+          "cache-control": "no-store"
+        }
+      });
+    }
+
+    return new Response(textFiles["index.html"], {
       headers: {
-        "content-type": contentTypes[key] || "application/octet-stream",
+        "content-type": contentTypes["index.html"],
         "cache-control": "no-store"
       }
     });
