@@ -137,6 +137,11 @@ canvas {
   touch-action: none;
 }
 
+.canvas-actions {
+  margin-top: 10px;
+  display: grid;
+}
+
 .empty-state {
   position: absolute;
   inset: 0;
@@ -494,7 +499,7 @@ textarea:focus,
 }
 
 .button-grid {
-  grid-template-columns: 1fr 84px 112px;
+  grid-template-columns: 1fr 1fr;
 }
 .btn {
   min-height: 44px;

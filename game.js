@@ -9,6 +9,7 @@ const emptyState = document.querySelector("#emptyState");
 const detectorStatus = document.querySelector("#detectorStatus");
 const phraseInput = document.querySelector("#phraseInput");
 const phraseBtn = document.querySelector("#phraseBtn");
+const customPhraseBtn = document.querySelector("#customPhraseBtn");
 const shortBtn = document.querySelector("#shortBtn");
 const badPhraseBtn = document.querySelector("#badPhraseBtn");
 const shuffleAllBtn = document.querySelector("#shuffleAllBtn");
@@ -1195,12 +1196,12 @@ function reportCurrentPhrase() {
     localStorage.setItem(reportedPhraseKey, JSON.stringify(reports.slice(0, 80)));
   }
   state.phraseOptions = state.phraseOptions.filter((option) => normalizePhraseForReport(option) !== normalized);
-  state.awaitingCaptionChoice = true;
-  state.phrase = "";
-  phraseInput.value = "";
+  state.awaitingCaptionChoice = false;
   state.phraseOptions = state.phraseOptions.length >= 3 ? state.phraseOptions : buildPhraseOptions(3);
+  state.phrase = state.phraseOptions[0] || fallbackPhrase();
+  phraseInput.value = state.phrase;
   renderPhraseChoices(state.phraseOptions);
-  setDetectorStatus("Got it. I will avoid that phrase on this device.", "success");
+  setDetectorStatus("Got it. I swapped in a different phrase.", "success");
   draw();
 }
 
@@ -1850,7 +1851,7 @@ function loadFile(file) {
       state.viewOriginal = false;
       state.doodleMode = false;
       state.manual = null;
-      state.awaitingCaptionChoice = true;
+      state.awaitingCaptionChoice = false;
       state.phrase = "";
       state.phraseOptions = [];
       setTailMode(false);
@@ -1901,7 +1902,7 @@ document.querySelectorAll("[data-pet]").forEach((button) => {
     state.pet = button.dataset.pet;
       state.warning = "";
       document.querySelectorAll("[data-pet]").forEach((item) => item.classList.toggle("active", item === button));
-      if (state.image && !state.phrase.trim()) state.awaitingCaptionChoice = true;
+      if (state.image && !state.phrase.trim()) state.awaitingCaptionChoice = false;
       nextPhrase();
   });
 });
@@ -1938,7 +1939,7 @@ tailBtn.addEventListener("click", () => {
 
 moodSelect.addEventListener("change", () => {
   state.mood = moodSelect.value;
-  if (state.image && !state.phrase.trim()) state.awaitingCaptionChoice = true;
+  if (state.image && !state.phrase.trim()) state.awaitingCaptionChoice = false;
   nextPhrase();
 });
 phraseInput.addEventListener("input", () => {
@@ -1955,6 +1956,13 @@ textRange.addEventListener("input", () => {
   draw();
 });
 phraseBtn.addEventListener("click", () => nextPhrase());
+customPhraseBtn.addEventListener("click", () => {
+  if (!state.image) return;
+  state.awaitingCaptionChoice = false;
+  phraseInput.focus();
+  phraseInput.select();
+  setDetectorStatus("Type your own phrase, and it will appear on the picture.", "success");
+});
 shortBtn.addEventListener("click", () => nextPhrase(true));
 badPhraseBtn.addEventListener("click", () => reportCurrentPhrase());
 document.querySelectorAll("[data-sticker]").forEach((button) => {
@@ -2212,7 +2220,7 @@ function loadGalleryImage(dataUrl) {
     state.strokes = [];
     state.viewOriginal = false;
     state.doodleMode = false;
-    state.awaitingCaptionChoice = true;
+    state.awaitingCaptionChoice = false;
     state.phrase = "";
     state.phraseOptions = [];
     setTailMode(false);
@@ -2249,7 +2257,7 @@ async function identifyPet(image) {
       state.warning = "";
       setActivePet(pet.class);
       const sceneNote = state.sceneTags.length ? ` Scene clues: ${state.sceneTags.slice(0, 3).map(displaySceneTag).join(", ")}.` : "";
-      setDetectorStatus(`${petConfidenceText(pet)} Pick a phrase to add the bubble.${sceneNote}`, "success");
+      setDetectorStatus(`${petConfidenceText(pet)} I added a bubble. Change the phrase below whenever you want.${sceneNote}`, "success");
       nextPhrase();
       return;
     }

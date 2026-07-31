@@ -16,7 +16,7 @@
   <title>Pet Thought Bubbler</title>
   <link rel="icon" type="image/png" href="app-photo.png">
   <link rel="apple-touch-icon" href="app-photo.png">
-  <link rel="stylesheet" href="styles.css?v=32">
+  <link rel="stylesheet" href="styles.css?v=33">
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
 </head>
@@ -42,6 +42,9 @@
             <p>Drop in a cat or dog photo.</p>
             <label class="empty-camera" for="cameraInput">Take Photo</label>
           </div>
+        </div>
+        <div class="canvas-actions photo-only">
+          <button class="btn primary" id="downloadBtn" type="button">Download Finished Picture</button>
         </div>
         <div class="inline-qr" id="inlineQr" aria-label="QR code for this app">
           <div>
@@ -137,10 +140,11 @@
 
         <div class="control-block photo-only" id="phraseBlock">
           <span class="label">Phrase</span>
-          <textarea id="phraseInput" rows="3" maxlength="110" aria-label="Pet phrase"></textarea>
+          <textarea id="phraseInput" rows="3" maxlength="110" aria-label="Pet phrase" placeholder="Type your own phrase here"></textarea>
           <div class="phrase-choices" id="phraseChoices" aria-label="Phrase choices"></div>
           <div class="button-grid">
             <button class="btn primary" id="phraseBtn" type="button">New Phrase</button>
+            <button class="btn" id="customPhraseBtn" type="button">Create Custom Phrase</button>
             <button class="btn" id="shortBtn" type="button">Short</button>
             <button class="btn" id="badPhraseBtn" type="button">Bad Phrase</button>
           </div>
@@ -194,7 +198,6 @@
         </div>
 
         <div class="actions">
-          <button class="btn primary" id="downloadBtn" type="button">Download Image</button>
           <button class="btn" id="clearBtn" type="button">Clear Photo</button>
           <button class="btn photo-only" id="beforeAfterBtn" type="button">Original</button>
           <button class="btn" id="copyLinkBtn" type="button">Copy Link</button>
@@ -217,7 +220,7 @@
       </div>
     </div>
   </div>
-  <script src="qr-code.js?v=32"></script>
-  <script type="module" src="game.js?v=32"></script>
+  <script src="qr-code.js?v=33"></script>
+  <script type="module" src="game.js?v=33"></script>
 </body>
 </html>
