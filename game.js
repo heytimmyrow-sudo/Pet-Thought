@@ -1,8 +1,11 @@
 const canvas = document.querySelector("#petCanvas");
 const ctx = canvas.getContext("2d");
 const photoInput = document.querySelector("#photoInput");
+const cameraInput = document.querySelector("#cameraInput");
+const cameraBtn = document.querySelector("#cameraBtn");
 const dropZone = document.querySelector("#dropZone");
 const emptyState = document.querySelector("#emptyState");
+const detectorStatus = document.querySelector("#detectorStatus");
 const phraseInput = document.querySelector("#phraseInput");
 const phraseBtn = document.querySelector("#phraseBtn");
 const shortBtn = document.querySelector("#shortBtn");
@@ -17,12 +20,17 @@ const state = {
   image: null,
   pet: "cat",
   bubble: "thought",
-  position: "top-right",
+  position: "auto",
   mood: "random",
   phrase: "",
   size: 1,
-  textScale: 1
+  textScale: 1,
+  detection: null,
+  imageFit: null,
+  warning: ""
 };
+
+let detectorPromise = null;
 
 const phrases = {
   cat: {
@@ -237,6 +245,12 @@ function pick(array) {
 }
 
 function nextPhrase(short = false) {
+  if (state.warning) {
+    state.phrase = state.warning;
+    phraseInput.value = state.phrase;
+    draw();
+    return;
+  }
   if (short) {
     state.phrase = pick(shortPhrases);
   } else {
@@ -278,6 +292,7 @@ function drawCoverImage(image, width, height) {
     sourceY = (image.naturalHeight - sourceHeight) / 2;
   }
 
+  state.imageFit = { sourceX, sourceY, sourceWidth, sourceHeight, width, height };
   ctx.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
 }
 
@@ -343,18 +358,82 @@ function drawBubble(width, height) {
 }
 
 function bubblePosition(width, height, bubbleWidth, bubbleHeight, margin) {
+  if (state.position === "auto" && state.detection && state.imageFit) {
+    return autoBubblePosition(width, height, bubbleWidth, bubbleHeight, margin);
+  }
+
   const xRight = width - bubbleWidth - margin;
   const yBottom = height - bubbleHeight - margin;
   const positions = {
-    "top-left": { x: margin, y: margin, anchorX: margin + bubbleWidth * .24, anchorY: margin + bubbleHeight },
-    "top-right": { x: xRight, y: margin, anchorX: xRight + bubbleWidth * .76, anchorY: margin + bubbleHeight },
-    "bottom-left": { x: margin, y: yBottom, anchorX: margin + bubbleWidth * .24, anchorY: yBottom },
-    "bottom-right": { x: xRight, y: yBottom, anchorX: xRight + bubbleWidth * .76, anchorY: yBottom }
+    "top-left": { x: margin, y: margin, width: bubbleWidth, height: bubbleHeight, anchorX: margin + bubbleWidth * .24, anchorY: margin + bubbleHeight },
+    "top-right": { x: xRight, y: margin, width: bubbleWidth, height: bubbleHeight, anchorX: xRight + bubbleWidth * .76, anchorY: margin + bubbleHeight },
+    "bottom-left": { x: margin, y: yBottom, width: bubbleWidth, height: bubbleHeight, anchorX: margin + bubbleWidth * .24, anchorY: yBottom },
+    "bottom-right": { x: xRight, y: yBottom, width: bubbleWidth, height: bubbleHeight, anchorX: xRight + bubbleWidth * .76, anchorY: yBottom }
   };
-  return positions[state.position];
+  return positions[state.position] || positions["top-right"];
+}
+
+function autoBubblePosition(width, height, bubbleWidth, bubbleHeight, margin) {
+  const target = headTarget();
+  const leftSpace = target.x;
+  const rightSpace = width - target.x;
+  const topSpace = target.y;
+  const bottomSpace = height - target.y;
+  const preferTop = topSpace > bubbleHeight + 95 || topSpace >= bottomSpace;
+  const preferLeft = leftSpace > rightSpace;
+  const x = clamp(preferLeft ? target.x - bubbleWidth - 70 : target.x + 70, margin, width - bubbleWidth - margin);
+  const y = clamp(preferTop ? target.y - bubbleHeight - 70 : target.y + 70, margin, height - bubbleHeight - margin);
+
+  return {
+    x,
+    y,
+    width: bubbleWidth,
+    height: bubbleHeight,
+    anchorX: clamp(target.x, x + 48, x + bubbleWidth - 48),
+    anchorY: y + bubbleHeight / 2,
+    targetX: target.x,
+    targetY: target.y
+  };
+}
+
+function headTarget() {
+  const box = detectionToCanvasBox(state.detection);
+  const petHeadY = state.pet === "dog" ? .31 : .27;
+  return {
+    x: clamp(box.x + box.w * .5, 28, canvas.width - 28),
+    y: clamp(box.y + box.h * petHeadY, 28, canvas.height - 28)
+  };
+}
+
+function detectionToCanvasBox(detection) {
+  const fit = state.imageFit;
+  const [x, y, w, h] = detection.bbox;
+  const left = (x - fit.sourceX) / fit.sourceWidth * fit.width;
+  const top = (y - fit.sourceY) / fit.sourceHeight * fit.height;
+  const width = w / fit.sourceWidth * fit.width;
+  const height = h / fit.sourceHeight * fit.height;
+  return {
+    x: clamp(left, 0, fit.width),
+    y: clamp(top, 0, fit.height),
+    w: clamp(width, 0, fit.width),
+    h: clamp(height, 0, fit.height)
+  };
 }
 
 function speechTail(pos) {
+  if (pos.targetX !== undefined) {
+    ctx.beginPath();
+    const baseX = clamp(pos.targetX, pos.x + 62, pos.x + pos.width - 62);
+    const baseY = clamp(pos.targetY < pos.y ? pos.y + 14 : pos.y + pos.height - 14, pos.y + 14, pos.y + pos.height - 14);
+    ctx.moveTo(baseX - 52, baseY);
+    ctx.lineTo(baseX + 52, baseY);
+    ctx.lineTo(pos.targetX, pos.targetY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    return;
+  }
+
   const down = pos.y < canvas.height / 2;
   const tipY = down ? pos.y + 172 : pos.y - 92;
   const baseY = down ? pos.y + 120 : pos.y + 18;
@@ -368,6 +447,22 @@ function speechTail(pos) {
 }
 
 function thoughtDots(pos) {
+  if (pos.targetX !== undefined) {
+    const dx = (pos.targetX - pos.anchorX) / 4;
+    const dy = (pos.targetY - pos.anchorY) / 4;
+    [
+      { r: 16, step: 3.1 },
+      { r: 25, step: 2.05 },
+      { r: 36, step: 1.05 }
+    ].forEach((dot) => {
+      ctx.beginPath();
+      ctx.arc(pos.anchorX + dx * dot.step, pos.anchorY + dy * dot.step, dot.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+    return;
+  }
+
   const down = pos.y < canvas.height / 2;
   const dots = [
     { r: 18, dx: 14, dy: down ? 36 : -36 },
@@ -411,6 +506,10 @@ function wrapText(text, maxWidth, fontSize) {
   return lines.slice(0, 4);
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function loadFile(file) {
   if (!file || !file.type.startsWith("image/")) return;
   const reader = new FileReader();
@@ -418,8 +517,11 @@ function loadFile(file) {
     const image = new Image();
     image.addEventListener("load", () => {
       state.image = image;
+      state.detection = null;
+      state.warning = "";
       emptyState.classList.add("hidden");
       draw();
+      identifyPet(image);
     });
     image.src = reader.result;
   });
@@ -427,6 +529,8 @@ function loadFile(file) {
 }
 
 photoInput.addEventListener("change", (event) => loadFile(event.target.files[0]));
+cameraInput.addEventListener("change", (event) => loadFile(event.target.files[0]));
+cameraBtn.addEventListener("click", () => cameraInput.click());
 
 ["dragenter", "dragover"].forEach((type) => {
   dropZone.addEventListener(type, (event) => {
@@ -445,6 +549,7 @@ dropZone.addEventListener("drop", (event) => loadFile(event.dataTransfer.files[0
 document.querySelectorAll("[data-pet]").forEach((button) => {
   button.addEventListener("click", () => {
     state.pet = button.dataset.pet;
+    state.warning = "";
     document.querySelectorAll("[data-pet]").forEach((item) => item.classList.toggle("active", item === button));
     nextPhrase();
   });
@@ -505,9 +610,86 @@ downloadBtn.addEventListener("click", () => {
 
 clearBtn.addEventListener("click", () => {
   state.image = null;
+  state.detection = null;
+  state.warning = "";
   photoInput.value = "";
+  cameraInput.value = "";
+  setDetectorStatus("Ready to spot cats and dogs.");
   emptyState.classList.remove("hidden");
   draw();
 });
 
 nextPhrase();
+
+async function identifyPet(image) {
+  setDetectorStatus("Looking for a cat or dog...");
+  try {
+    const detector = await loadDetector();
+    const predictions = await detector.detect(image);
+    const pets = predictions.filter((item) => ["cat", "dog"].includes(item.class) && item.score >= .45);
+    const people = predictions.filter((item) => item.class === "person" && item.score >= .5);
+
+    if (pets.length) {
+      const pet = pets.sort((a, b) => scoreDetection(b) - scoreDetection(a))[0];
+      state.pet = pet.class;
+      state.detection = pet;
+      state.warning = "";
+      setActivePet(pet.class);
+      setDetectorStatus(`Looks like a ${pet.class}. Bubble aligned near the head.`, "success");
+      nextPhrase();
+      return;
+    }
+
+    if (people.length) {
+      state.pet = "either";
+      state.detection = null;
+      state.warning = "That's not a pet. Try a cat or dog photo.";
+      setActivePet("either");
+      setDetectorStatus("That's not a pet. Try a cat or dog photo.", "warning");
+      nextPhrase();
+      return;
+    }
+
+    state.detection = null;
+    state.warning = "I can't find a cat or dog yet. Try a clearer pet photo.";
+    setDetectorStatus("I can't find a cat or dog yet. Try a clearer pet photo.", "warning");
+    nextPhrase();
+  } catch (error) {
+    state.detection = null;
+    setDetectorStatus("Pet spotting is unavailable right now, but you can still make bubbles manually.", "warning");
+    draw();
+  }
+}
+
+function loadDetector() {
+  if (!detectorPromise) {
+    detectorPromise = new Promise((resolve, reject) => {
+      const startedAt = Date.now();
+      const waitForModel = () => {
+        if (window.cocoSsd) {
+          window.cocoSsd.load().then(resolve, reject);
+        } else if (Date.now() - startedAt > 10000) {
+          reject(new Error("Detector did not load"));
+        } else {
+          window.setTimeout(waitForModel, 120);
+        }
+      };
+      waitForModel();
+    });
+  }
+  return detectorPromise;
+}
+
+function scoreDetection(item) {
+  return item.score * item.bbox[2] * item.bbox[3];
+}
+
+function setActivePet(pet) {
+  document.querySelectorAll("[data-pet]").forEach((item) => item.classList.toggle("active", item.dataset.pet === pet));
+}
+
+function setDetectorStatus(message, tone = "") {
+  detectorStatus.textContent = message;
+  detectorStatus.classList.toggle("success", tone === "success");
+  detectorStatus.classList.toggle("warning", tone === "warning");
+}

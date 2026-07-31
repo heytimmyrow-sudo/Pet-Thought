@@ -34,6 +34,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   outline: 3px solid rgba(47, 159, 149, .45);
   outline-offset: 3px;
 }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 .app {
   min-height: 100dvh;
@@ -213,6 +222,67 @@ canvas {
   color: var(--soft-ink);
   font-size: 13px;
 }
+.camera-button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 8px;
+  color: #fff;
+  background: #4f8fcf;
+  font-weight: 900;
+  box-shadow: inset 0 -3px rgba(21, 76, 129, .32);
+}
+.camera-button span {
+  position: relative;
+  width: 24px;
+  height: 18px;
+  border: 3px solid currentColor;
+  border-radius: 5px;
+}
+.camera-button span::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 3px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+.camera-button span::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: -7px;
+  width: 8px;
+  height: 5px;
+  border-radius: 3px 3px 0 0;
+  background: currentColor;
+}
+.detector-status {
+  min-height: 38px;
+  margin: -4px 0 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--soft-ink);
+  background: #fffefa;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.detector-status.warning {
+  color: #7c2e24;
+  background: #fff0ec;
+  border-color: #edb8ad;
+}
+.detector-status.success {
+  color: #176b63;
+  background: #eaf8f5;
+  border-color: #9bd7d0;
+}
 
 .control-block {
   display: grid;
@@ -300,7 +370,7 @@ textarea {
 
 .position-grid {
   display: grid;
-  grid-template-columns: repeat(2, 42px);
+  grid-template-columns: 68px repeat(2, 42px);
   gap: 8px;
 }
 .position-grid button {
@@ -310,6 +380,12 @@ textarea {
   border: 1px solid var(--line);
   background: #f5efe5;
 }
+.position-grid button.auto {
+  width: 68px;
+  color: var(--soft-ink);
+  font-size: 13px;
+  font-weight: 900;
+}
 .position-grid button::after {
   content: "";
   position: absolute;
@@ -318,6 +394,7 @@ textarea {
   border-radius: 50%;
   background: var(--coral);
 }
+.position-grid button.auto::after { display: none; }
 .position-grid [data-position="top-left"]::after { left: 7px; top: 7px; }
 .position-grid [data-position="top-right"]::after { right: 7px; top: 7px; }
 .position-grid [data-position="bottom-left"]::after { left: 7px; bottom: 7px; }
