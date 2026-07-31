@@ -4,6 +4,13 @@ import vm from "node:vm";
 const source = readFileSync("game.js", "utf8");
 const names = ["phrases", "sharedPacks", "scenePhrasePacks", "shortPhrases"];
 const sceneKeywords = {
+  on_table: /on.+table|table.+on|surface|stage|elevated|climbed|high|visibility/i,
+  on_couch: /on.+couch|couch.+on|cushion|comfort|snuggle|cozy|furniture/i,
+  on_bed: /on.+bed|bed.+on|nap|resting|cuddle|cozy|softness/i,
+  near_food: /near.+food|food.+near|snack|treat|bite|meal|edible/i,
+  near_toy: /near.+toy|toy.+near|play|throw|launch|paw range/i,
+  near_computer: /near.+computer|computer.+near|screen|work|laptop|productivity/i,
+  with_person: /with.+human|with.+person|person|human|staff|team|support crew|someone important/i,
   table: /table|surface|height|platform/i,
   food: /snack|food|edible|crumb|plate|meal|bite|smell|treat/i,
   couch: /couch|cushion|furniture|soft spot|comfort|relaxation/i,

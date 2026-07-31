@@ -393,6 +393,146 @@ const sharedPacks = {
 };
 
 const scenePhrasePacks = {
+  on_table: {
+    cat: [
+      "I am on this table for very official cat reasons.",
+      "This table has become my elevated cat headquarters.",
+      "I climbed onto the table and found power.",
+      "The table is mine because I am currently on it."
+    ],
+    dog: [
+      "I am on the table and taking questions.",
+      "This table I am on was clearly very important.",
+      "I found my way onto the table like a professional.",
+      "The table I am on is surprised, but I am committed."
+    ],
+    either: [
+      "Being on this table has improved the whole photo.",
+      "This table is now a tiny stage.",
+      "I am using this table for important visibility.",
+      "The surface beneath me has been promoted."
+    ]
+  },
+  on_couch: {
+    cat: [
+      "I am on the couch because comfort needed leadership.",
+      "This couch I am on has accepted my cat authority.",
+      "I found the couch and became furniture royalty.",
+      "The couch I am on is doing a fine job holding me."
+    ],
+    dog: [
+      "I am on the couch and fully available for snuggles.",
+      "This couch is better with dog installed on it.",
+      "I have joined the couch for emotional support.",
+      "The couch and I are having a cozy meeting."
+    ],
+    either: [
+      "I am on this couch doing comfort research.",
+      "This couch I am on has been officially softened.",
+      "The cushion under me is performing beautifully.",
+      "I found the couch, got on it, and improved it."
+    ]
+  },
+  on_bed: {
+    cat: [
+      "I am on the bed conducting nap business.",
+      "This bed I am on has been selected by cat management.",
+      "I found the bed, got on it, and became unavailable.",
+      "The bed I am on is mine until further notice."
+    ],
+    dog: [
+      "I am on the bed saving a tiny corner for you.",
+      "This bed and I are best nap partners.",
+      "I brought dog warmth onto the bed meeting.",
+      "The bed is currently under cuddle protection."
+    ],
+    either: [
+      "I am on this bed for professional resting.",
+      "The bed has accepted my softness.",
+      "This bed scene is mostly about cozy excellence.",
+      "I found the nap zone and made it official."
+    ]
+  },
+  near_food: {
+    cat: [
+      "I am near the food for scientific reasons.",
+      "This nearby food is close enough to become my business.",
+      "I am monitoring nearby snacks with quiet intensity.",
+      "The nearby food and I are having a meaningful moment."
+    ],
+    dog: [
+      "I am near the food and ready to help.",
+      "This snack is close enough to inspire hope.",
+      "I have positioned myself near the food department.",
+      "The food is nearby, so my focus is excellent."
+    ],
+    either: [
+      "I am near the snacks and thinking important thoughts.",
+      "The food nearby has my full attention.",
+      "This nearby food situation requires supervision.",
+      "I found the snack zone and reported for duty."
+    ]
+  },
+  near_toy: {
+    cat: [
+      "I am near this toy so it remembers who is in charge.",
+      "This nearby toy is close enough for dramatic judgment.",
+      "I am pretending the nearby toy is not exciting.",
+      "The toy near me has been carefully evaluated."
+    ],
+    dog: [
+      "I am near the toy and prepared for launch.",
+      "This nearby toy is close, which means joy is close.",
+      "I found the nearby toy zone and brought enthusiasm.",
+      "The toy near me is requesting another throw."
+    ],
+    either: [
+      "I am near the toy and the plot is developing.",
+      "This nearby toy has become very important.",
+      "The nearby toy situation is close and serious.",
+      "Playtime is within paw range."
+    ]
+  },
+  near_computer: {
+    cat: [
+      "I am near the computer to improve productivity.",
+      "This nearby computer is close enough for cat management.",
+      "I am supervising the nearby screen with authority.",
+      "The computer near me clearly needed fluff."
+    ],
+    dog: [
+      "I am near the computer because work needs moral support.",
+      "This laptop is close, but walks are still important.",
+      "I brought my face to the nearby computer zone.",
+      "The nearby screen has not thrown a ball once."
+    ],
+    either: [
+      "I am near the computer and reviewing the situation.",
+      "This work zone needed a tiny supervisor.",
+      "The nearby screen is competing with my cuteness.",
+      "Nearby computer time has been interrupted by excellence."
+    ]
+  },
+  with_person: {
+    cat: [
+      "I am with my human assistant for scale.",
+      "This person is close because I allowed it.",
+      "My human is nearby and seems useful.",
+      "I am sharing the frame with trained staff."
+    ],
+    dog: [
+      "I am with my person and everything is better.",
+      "My human is close, so this photo is perfect.",
+      "I brought my favorite person into the moment.",
+      "This person is near me because we are a team."
+    ],
+    either: [
+      "I am with my human and feeling very official.",
+      "This person nearby is part of my support crew.",
+      "The human in this photo has been approved.",
+      "I am close to someone important."
+    ]
+  },
   table: {
     cat: [
       "This table is my observation platform.",
@@ -728,6 +868,13 @@ function fallbackPhrase() {
 
 function sceneFallbackPhrase(tag) {
   const labels = {
+    on_table: "being on this table",
+    on_couch: "being on this couch",
+    on_bed: "being on this bed",
+    near_food: "this nearby food",
+    near_toy: "this nearby toy",
+    near_computer: "this nearby computer",
+    with_person: "being with my human",
     table: "this table scene",
     food: "the snack situation",
     couch: "this cozy couch scene",
@@ -753,6 +900,9 @@ function sceneFallbackPhrase(tag) {
 function weightedSceneTags() {
   const tags = [...state.sceneTags];
   const mood = state.mood;
+  ["on_table", "on_couch", "on_bed", "near_food", "near_toy", "near_computer", "with_person"].forEach((tag) => {
+    if (tags.includes(tag)) tags.push(tag, tag, tag, tag);
+  });
   if (tags.includes("table")) tags.push("table", "table", "table");
   if (tags.includes("computer")) tags.push("computer");
   if (tags.includes("toy")) tags.push("toy");
@@ -794,6 +944,13 @@ function adaptPhraseForMood(base, mood, tag) {
 
 function shortenContextPhrase(tag, base) {
   const shortByTag = {
+    on_table: ["On table.", "Table boss.", "High ground."],
+    on_couch: ["On couch.", "Couch mode.", "Cushion boss."],
+    on_bed: ["On bed.", "Nap zone.", "Bed boss."],
+    near_food: ["Snack range.", "Food watch.", "Treat nearby."],
+    near_toy: ["Toy nearby.", "Play range.", "Toy watch."],
+    near_computer: ["Work watch.", "Screen zone.", "Computer boss."],
+    with_person: ["With human.", "My person.", "Team photo."],
     table: ["Table claimed.", "Surface boss.", "Table thoughts."],
     food: ["Snack scene.", "Treat alert.", "Food thoughts."],
     couch: ["Couch claimed.", "Cozy boss.", "Soft spot."],
@@ -1806,8 +1963,8 @@ async function identifyPet(image) {
       state.sceneTags = sceneTagsFromPredictions(predictions, pet);
       state.warning = "";
       setActivePet(pet.class);
-      const sceneNote = state.sceneTags.length ? ` Scene clues: ${state.sceneTags.slice(0, 3).join(", ")}.` : "";
-      setDetectorStatus(`Looks like a ${pet.class}. Bubble aligned near the head.${sceneNote}`, "success");
+      const sceneNote = state.sceneTags.length ? ` Scene clues: ${state.sceneTags.slice(0, 3).map(displaySceneTag).join(", ")}.` : "";
+      setDetectorStatus(`Looks like a ${pet.class}${primaryRelationshipText()}. Bubble aligned near the head.${sceneNote}`, "success");
       nextPhrase();
       return;
     }
@@ -1840,7 +1997,9 @@ function sceneTagsFromPredictions(predictions, pet) {
   const tagSet = new Set();
   const strongObjects = predictions.filter((item) => item.score >= .38 && item !== pet);
   const classNames = strongObjects.map((item) => item.class);
+  const petBox = predictionBox(pet);
 
+  addRelationshipTags(tagSet, strongObjects, petBox);
   addTagForAny(tagSet, classNames, "table", ["dining table"]);
   addTagForAny(tagSet, classNames, "food", ["banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "bowl", "cup", "wine glass", "fork", "knife", "spoon"]);
   addTagForAny(tagSet, classNames, "couch", ["couch", "chair"]);
@@ -1863,8 +2022,80 @@ function sceneTagsFromPredictions(predictions, pet) {
   return [...tagSet];
 }
 
+function addRelationshipTags(tagSet, objects, petBox) {
+  const table = findStrongObject(objects, ["dining table"]);
+  const couch = findStrongObject(objects, ["couch", "chair"]);
+  const bed = findStrongObject(objects, ["bed"]);
+  const person = findStrongObject(objects, ["person"]);
+  const food = findStrongObject(objects, ["banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "bowl", "cup", "wine glass", "fork", "knife", "spoon"]);
+  const toy = findStrongObject(objects, ["sports ball", "frisbee", "teddy bear", "baseball bat", "baseball glove", "skateboard"]);
+  const computer = findStrongObject(objects, ["laptop", "keyboard", "mouse", "cell phone", "tv", "remote"]);
+
+  if (table && petAppearsOnSurface(petBox, predictionBox(table))) tagSet.add("on_table");
+  if (couch && petAppearsOnSurface(petBox, predictionBox(couch))) tagSet.add("on_couch");
+  if (bed && petAppearsOnSurface(petBox, predictionBox(bed))) tagSet.add("on_bed");
+  if (person && boxesAreClose(petBox, predictionBox(person), .18)) tagSet.add("with_person");
+  if (food && boxesAreClose(petBox, predictionBox(food), .16)) tagSet.add("near_food");
+  if (toy && boxesAreClose(petBox, predictionBox(toy), .18)) tagSet.add("near_toy");
+  if (computer && boxesAreClose(petBox, predictionBox(computer), .18)) tagSet.add("near_computer");
+}
+
+function findStrongObject(objects, classNames) {
+  return objects
+    .filter((item) => classNames.includes(item.class))
+    .sort((a, b) => scoreDetection(b) - scoreDetection(a))[0];
+}
+
+function predictionBox(item) {
+  const [x, y, w, h] = item.bbox;
+  return { x, y, w, h, right: x + w, bottom: y + h, centerX: x + w / 2, centerY: y + h / 2 };
+}
+
+function petAppearsOnSurface(petBox, surfaceBox) {
+  const horizontalOverlap = overlapLength(petBox.x, petBox.right, surfaceBox.x, surfaceBox.right);
+  const overlapRatio = horizontalOverlap / Math.max(1, Math.min(petBox.w, surfaceBox.w));
+  const petBottomNearSurface = petBox.bottom >= surfaceBox.y - petBox.h * .28 && petBox.bottom <= surfaceBox.bottom + petBox.h * .55;
+  const petCenterAboveSurfaceBottom = petBox.centerY < surfaceBox.bottom;
+  return overlapRatio > .24 && petBottomNearSurface && petCenterAboveSurfaceBottom;
+}
+
+function boxesAreClose(a, b, maxGapRatio) {
+  const gapX = Math.max(0, Math.max(a.x - b.right, b.x - a.right));
+  const gapY = Math.max(0, Math.max(a.y - b.bottom, b.y - a.bottom));
+  const imageScale = state.image ? Math.max(state.image.naturalWidth, state.image.naturalHeight) : 1200;
+  const closeGap = Math.hypot(gapX, gapY) <= imageScale * maxGapRatio;
+  const overlap = boxOverlapArea(a, b) / Math.max(1, Math.min(a.w * a.h, b.w * b.h));
+  return closeGap || overlap > .08;
+}
+
+function overlapLength(aStart, aEnd, bStart, bEnd) {
+  return Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart));
+}
+
+function boxOverlapArea(a, b) {
+  return overlapLength(a.x, a.right, b.x, b.right) * overlapLength(a.y, a.bottom, b.y, b.bottom);
+}
+
 function addTagForAny(tagSet, classNames, tag, matches) {
   if (matches.some((item) => classNames.includes(item))) tagSet.add(tag);
+}
+
+function displaySceneTag(tag) {
+  const labels = {
+    on_table: "on a table",
+    on_couch: "on a couch",
+    on_bed: "on a bed",
+    near_food: "near food",
+    near_toy: "near a toy",
+    near_computer: "near a computer",
+    with_person: "with a person"
+  };
+  return labels[tag] || tag;
+}
+
+function primaryRelationshipText() {
+  const tag = state.sceneTags.find((item) => ["on_table", "on_couch", "on_bed", "near_food", "near_toy", "near_computer", "with_person"].includes(item));
+  return tag ? ` ${displaySceneTag(tag)}` : "";
 }
 
 function loadDetector() {

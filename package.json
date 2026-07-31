@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "audit:phrases": "node scripts/audit-phrases.mjs",
+    "test:relationships": "node scripts/test-relationships.mjs",
     "build": "node build-static-site.mjs && node build-size-report.mjs",
     "size": "node build-size-report.mjs"
   },
