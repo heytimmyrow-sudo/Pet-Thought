@@ -836,7 +836,7 @@ function draw() {
 
 function setPhotoVisible(hasPhoto) {
   app.classList.toggle("has-photo", hasPhoto);
-  if (hasPhoto) renderQrCode(inlineQrBox, inlineQrUrlText, 3);
+  renderQrCode(inlineQrBox, inlineQrUrlText, 3);
 }
 
 function drawCoverImage(image, width, height) {
@@ -1653,6 +1653,7 @@ clearBtn.addEventListener("click", () => {
 });
 
 draw();
+renderQrCode(inlineQrBox, inlineQrUrlText, 3);
 renderGallery();
 
 function downloadImage() {
