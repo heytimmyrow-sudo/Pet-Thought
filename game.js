@@ -269,11 +269,10 @@ function draw() {
 
   if (state.image) {
     drawCoverImage(state.image, width, height);
+    drawBubble(width, height);
   } else {
     drawPlaceholder(width, height);
   }
-
-  drawBubble(width, height);
 }
 
 function drawCoverImage(image, width, height) {
@@ -592,7 +591,7 @@ shortBtn.addEventListener("click", () => nextPhrase(true));
 shuffleAllBtn.addEventListener("click", () => {
   state.pet = pick(["cat", "dog", "either"]);
   state.bubble = pick(["thought", "speech"]);
-  state.position = pick(["top-left", "top-right", "bottom-left", "bottom-right"]);
+  state.position = state.detection ? "auto" : pick(["auto", "top-left", "top-right", "bottom-left", "bottom-right"]);
   state.mood = "random";
   moodSelect.value = "random";
   document.querySelectorAll("[data-pet]").forEach((item) => item.classList.toggle("active", item.dataset.pet === state.pet));
