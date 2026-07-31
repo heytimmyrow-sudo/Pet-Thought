@@ -3,6 +3,7 @@ const ctx = canvas.getContext("2d");
 const app = document.querySelector(".app");
 const photoInput = document.querySelector("#photoInput");
 const cameraInput = document.querySelector("#cameraInput");
+const choosePhotoBtn = document.querySelector("#choosePhotoBtn");
 const cameraBtn = document.querySelector("#cameraBtn");
 const dropZone = document.querySelector("#dropZone");
 const emptyState = document.querySelector("#emptyState");
@@ -1871,6 +1872,12 @@ function loadFile(file) {
 
 photoInput.addEventListener("change", (event) => loadFile(event.target.files[0]));
 cameraInput.addEventListener("change", (event) => loadFile(event.target.files[0]));
+choosePhotoBtn.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    photoInput.click();
+  }
+});
 cameraBtn.addEventListener("keydown", (event) => {
   if (event.key === "Enter" || event.key === " ") {
     event.preventDefault();

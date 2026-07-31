@@ -16,7 +16,7 @@
   <title>Pet Thought Bubbler</title>
   <link rel="icon" type="image/png" href="app-photo.png">
   <link rel="apple-touch-icon" href="app-photo.png">
-  <link rel="stylesheet" href="styles.css?v=33">
+  <link rel="stylesheet" href="styles.css?v=34">
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
 </head>
@@ -32,15 +32,18 @@
           <button class="icon-button" id="shuffleAllBtn" type="button" aria-label="Surprise me" title="Surprise me">?</button>
         </div>
 
-        <div class="canvas-wrap">
+        <div class="canvas-wrap" id="dropZone">
           <canvas id="petCanvas" width="1200" height="900" aria-label="Pet photo with caption bubble"></canvas>
           <div class="empty-state" id="emptyState">
             <div class="empty-mark" aria-hidden="true">
               <span></span>
               <i></i>
             </div>
-            <p>Drop in a cat or dog photo.</p>
-            <label class="empty-camera" for="cameraInput">Take Photo</label>
+            <p>Start with a cat or dog photo.</p>
+            <div class="empty-actions">
+              <label class="empty-photo" id="choosePhotoBtn" for="photoInput" role="button" tabindex="0" aria-label="Choose photo">Choose Photo</label>
+              <label class="empty-camera" id="cameraBtn" for="cameraInput" role="button" tabindex="0" aria-label="Open camera">Take Picture</label>
+            </div>
           </div>
         </div>
         <div class="canvas-actions photo-only">
@@ -67,16 +70,8 @@
       </div>
 
       <aside class="controls" aria-label="Pet bubble controls">
-        <label class="upload-zone" id="dropZone">
-          <input id="photoInput" type="file" accept="image/*">
-          <span>Choose Photo</span>
-          <small>JPG, PNG, GIF, or a fresh camera shot</small>
-        </label>
+        <input id="photoInput" class="visually-hidden" type="file" accept="image/*">
         <input id="cameraInput" class="visually-hidden" type="file" accept="image/*" capture="environment">
-        <label class="camera-button" id="cameraBtn" for="cameraInput" role="button" tabindex="0" aria-label="Open camera">
-          <span aria-hidden="true"></span>
-          Camera
-        </label>
         <p class="detector-status" id="detectorStatus" aria-live="polite">Ready to spot cats and dogs.</p>
 
         <div class="control-block">
@@ -220,7 +215,7 @@
       </div>
     </div>
   </div>
-  <script src="qr-code.js?v=33"></script>
-  <script type="module" src="game.js?v=33"></script>
+  <script src="qr-code.js?v=34"></script>
+  <script type="module" src="game.js?v=34"></script>
 </body>
 </html>
