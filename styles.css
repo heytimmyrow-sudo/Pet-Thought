@@ -28,12 +28,13 @@ body {
 
 button, input, select, textarea { font: inherit; }
 button, select, textarea, input[type="range"] { color: inherit; }
-button {
+button,
+.camera-button {
   border: 0;
   cursor: pointer;
   transition: transform .16s ease, filter .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease;
 }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .camera-button:focus-visible {
   outline: 3px solid rgba(47, 159, 149, .45);
   outline-offset: 3px;
 }
@@ -200,6 +201,9 @@ canvas {
   display: flex;
   flex-direction: column;
   gap: 13px;
+}
+.app:not(.has-photo) .photo-only {
+  display: none;
 }
 
 .upload-zone {

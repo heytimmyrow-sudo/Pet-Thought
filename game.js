@@ -1,5 +1,6 @@
 const canvas = document.querySelector("#petCanvas");
 const ctx = canvas.getContext("2d");
+const app = document.querySelector(".app");
 const photoInput = document.querySelector("#photoInput");
 const cameraInput = document.querySelector("#cameraInput");
 const cameraBtn = document.querySelector("#cameraBtn");
@@ -15,6 +16,8 @@ const sizeRange = document.querySelector("#sizeRange");
 const textRange = document.querySelector("#textRange");
 const downloadBtn = document.querySelector("#downloadBtn");
 const clearBtn = document.querySelector("#clearBtn");
+const sharePhotoBtn = document.querySelector("#sharePhotoBtn");
+const shareAppBtn = document.querySelector("#shareAppBtn");
 
 const state = {
   image: null,
@@ -275,6 +278,10 @@ function draw() {
   }
 }
 
+function setPhotoVisible(hasPhoto) {
+  app.classList.toggle("has-photo", hasPhoto);
+}
+
 function drawCoverImage(image, width, height) {
   const canvasRatio = width / height;
   const imageRatio = image.naturalWidth / image.naturalHeight;
@@ -518,8 +525,9 @@ function loadFile(file) {
       state.image = image;
       state.detection = null;
       state.warning = "";
+      setPhotoVisible(true);
       emptyState.classList.add("hidden");
-      draw();
+      nextPhrase();
       identifyPet(image);
     });
     image.src = reader.result;
@@ -529,7 +537,12 @@ function loadFile(file) {
 
 photoInput.addEventListener("change", (event) => loadFile(event.target.files[0]));
 cameraInput.addEventListener("change", (event) => loadFile(event.target.files[0]));
-cameraBtn.addEventListener("click", () => cameraInput.click());
+cameraBtn.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    cameraInput.click();
+  }
+});
 
 ["dragenter", "dragover"].forEach((type) => {
   dropZone.addEventListener(type, (event) => {
@@ -601,24 +614,77 @@ shuffleAllBtn.addEventListener("click", () => {
 });
 
 downloadBtn.addEventListener("click", () => {
-  const link = document.createElement("a");
-  link.download = "pet-thought-bubble.png";
-  link.href = canvas.toDataURL("image/png");
-  link.click();
+  downloadImage();
+});
+
+sharePhotoBtn.addEventListener("click", async () => {
+  if (!state.image) return;
+  const blob = await canvasBlob();
+  const file = new File([blob], "pet-thought-bubble.png", { type: "image/png" });
+
+  try {
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: "Pet Thought Bubbler",
+        text: "Look what my pet is thinking."
+      });
+      return;
+    }
+  } catch (error) {
+    if (error.name === "AbortError") return;
+  }
+
+  downloadImage();
+  setDetectorStatus("Sharing photos is not available here, so I downloaded it instead.", "warning");
+});
+
+shareAppBtn.addEventListener("click", async () => {
+  const shareData = {
+    title: "Pet Thought Bubbler",
+    text: "Add silly thought bubbles to cat and dog photos.",
+    url: window.location.href
+  };
+
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+      return;
+    }
+  } catch (error) {
+    if (error.name === "AbortError") return;
+  }
+
+  await navigator.clipboard?.writeText(window.location.href);
+  setDetectorStatus("App link copied.", "success");
 });
 
 clearBtn.addEventListener("click", () => {
   state.image = null;
   state.detection = null;
   state.warning = "";
+  state.phrase = "";
+  phraseInput.value = "";
   photoInput.value = "";
   cameraInput.value = "";
+  setPhotoVisible(false);
   setDetectorStatus("Ready to spot cats and dogs.");
   emptyState.classList.remove("hidden");
   draw();
 });
 
-nextPhrase();
+draw();
+
+function downloadImage() {
+  const link = document.createElement("a");
+  link.download = "pet-thought-bubble.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function canvasBlob() {
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+}
 
 async function identifyPet(image) {
   setDetectorStatus("Looking for a cat or dog...");
