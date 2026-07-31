@@ -67,7 +67,8 @@ const state = {
   viewOriginal: false,
   doodleMode: false,
   tailMode: false,
-  suppressEditHandles: false
+  suppressEditHandles: false,
+  awaitingCaptionChoice: false
 };
 
 let detectorPromise = null;
@@ -806,6 +807,7 @@ function pick(array) {
 
 function nextPhrase(short = false) {
   if (state.warning) {
+    state.awaitingCaptionChoice = false;
     state.phrase = state.warning;
     phraseInput.value = state.phrase;
     renderPhraseChoices([]);
@@ -813,10 +815,11 @@ function nextPhrase(short = false) {
     return;
   }
   if (short) {
+    state.awaitingCaptionChoice = false;
     state.phrase = personalizePhrase(contextualPhrase(true) || pick(shortPhrases));
   } else {
     state.phraseOptions = buildPhraseOptions(3);
-    state.phrase = state.phraseOptions[0] || fallbackPhrase();
+    state.phrase = state.awaitingCaptionChoice ? "" : state.phraseOptions[0] || fallbackPhrase();
     renderPhraseChoices(state.phraseOptions);
   }
   phraseInput.value = state.phrase;
@@ -992,6 +995,7 @@ function renderPhraseChoices(options) {
     button.textContent = option;
     button.classList.toggle("active", option === state.phrase);
     button.addEventListener("click", () => {
+      state.awaitingCaptionChoice = false;
       state.phrase = option;
       phraseInput.value = option;
       renderPhraseChoices(options);
@@ -1011,7 +1015,8 @@ function draw() {
     if (!state.viewOriginal) {
       drawStickers();
       drawDoodles();
-      drawBubble(width, height);
+      if (state.phrase.trim()) drawBubble(width, height);
+      else state.lastBubble = null;
     } else {
       state.lastBubble = null;
     }
@@ -1646,12 +1651,17 @@ function loadFile(file) {
       state.viewOriginal = false;
       state.doodleMode = false;
       state.manual = null;
+      state.awaitingCaptionChoice = true;
+      state.phrase = "";
+      state.phraseOptions = [];
       setTailMode(false);
+      phraseInput.value = "";
+      renderPhraseChoices([]);
       beforeAfterBtn.textContent = "Original";
       doodleBtn.classList.remove("active");
       setPhotoVisible(true);
       emptyState.classList.add("hidden");
-      nextPhrase();
+      draw();
       identifyPet(image);
     });
     image.src = reader.result;
@@ -1690,9 +1700,10 @@ dropZone.addEventListener("drop", (event) => loadFile(event.dataTransfer.files[0
 document.querySelectorAll("[data-pet]").forEach((button) => {
   button.addEventListener("click", () => {
     state.pet = button.dataset.pet;
-    state.warning = "";
-    document.querySelectorAll("[data-pet]").forEach((item) => item.classList.toggle("active", item === button));
-    nextPhrase();
+      state.warning = "";
+      document.querySelectorAll("[data-pet]").forEach((item) => item.classList.toggle("active", item === button));
+      if (state.image && !state.phrase.trim()) state.awaitingCaptionChoice = true;
+      nextPhrase();
   });
 });
 
@@ -1728,9 +1739,11 @@ tailBtn.addEventListener("click", () => {
 
 moodSelect.addEventListener("change", () => {
   state.mood = moodSelect.value;
+  if (state.image && !state.phrase.trim()) state.awaitingCaptionChoice = true;
   nextPhrase();
 });
 phraseInput.addEventListener("input", () => {
+  state.awaitingCaptionChoice = false;
   state.phrase = phraseInput.value;
   draw();
 });
@@ -1894,6 +1907,7 @@ clearBtn.addEventListener("click", () => {
   state.strokes = [];
   state.viewOriginal = false;
   state.doodleMode = false;
+  state.awaitingCaptionChoice = false;
   setTailMode(false);
   activeStroke = null;
   phraseInput.value = "";
@@ -1996,13 +2010,18 @@ function loadGalleryImage(dataUrl) {
     state.strokes = [];
     state.viewOriginal = false;
     state.doodleMode = false;
+    state.awaitingCaptionChoice = true;
+    state.phrase = "";
+    state.phraseOptions = [];
     setTailMode(false);
+    phraseInput.value = "";
+    renderPhraseChoices([]);
     beforeAfterBtn.textContent = "Original";
     doodleBtn.classList.remove("active");
     setPhotoVisible(true);
     emptyState.classList.add("hidden");
-    nextPhrase();
-    setDetectorStatus("Recent creation loaded.", "success");
+    draw();
+    setDetectorStatus("Recent creation loaded. Pick a phrase to add the bubble.", "success");
   });
   image.src = dataUrl;
 }
@@ -2028,7 +2047,7 @@ async function identifyPet(image) {
       state.warning = "";
       setActivePet(pet.class);
       const sceneNote = state.sceneTags.length ? ` Scene clues: ${state.sceneTags.slice(0, 3).map(displaySceneTag).join(", ")}.` : "";
-      setDetectorStatus(`Looks like a ${pet.class}${primaryRelationshipText()}. Bubble aligned near the head.${sceneNote}`, "success");
+      setDetectorStatus(`Looks like a ${pet.class}${primaryRelationshipText()}. Pick a phrase to add the bubble.${sceneNote}`, "success");
       nextPhrase();
       return;
     }
