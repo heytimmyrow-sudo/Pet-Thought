@@ -40,7 +40,15 @@
               <i></i>
             </div>
             <p>Drop in a cat or dog photo.</p>
+            <label class="empty-camera" for="cameraInput">Take Photo</label>
           </div>
+        </div>
+        <div class="gallery hidden" id="gallery" aria-label="Recent creations">
+          <div class="gallery-head">
+            <span>Recent</span>
+            <button class="link-button" id="clearGalleryBtn" type="button">Clear</button>
+          </div>
+          <div class="gallery-strip" id="galleryStrip"></div>
         </div>
       </div>
 
@@ -75,7 +83,20 @@
         </div>
 
         <div class="control-block">
-          <span class="label">Mood</span>
+          <span class="label">Style</span>
+          <select id="styleSelect" aria-label="Bubble style">
+            <option value="classic">Classic bubble</option>
+            <option value="comic">Comic pop</option>
+            <option value="cloud">Cloud thought</option>
+            <option value="sticker">Sticker label</option>
+            <option value="whisper">Tiny whisper</option>
+            <option value="announcement">Big announcement</option>
+            <option value="news">Breaking news</option>
+          </select>
+        </div>
+
+        <div class="control-block">
+          <span class="label">Phrase Pack</span>
           <select id="moodSelect" aria-label="Phrase mood">
             <option value="random">All the silliness</option>
             <option value="food">Food crimes</option>
@@ -84,6 +105,10 @@
             <option value="nap">Nap science</option>
             <option value="dramatic">Very dramatic</option>
             <option value="compliment">Sweet little compliments</option>
+            <option value="birthday">Birthday pet</option>
+            <option value="morning">Good morning</option>
+            <option value="apology">Apology note</option>
+            <option value="holiday">Holiday fluff</option>
           </select>
         </div>
 
@@ -100,6 +125,7 @@
           <span class="label">Bubble Spot</span>
           <div class="position-grid" role="group" aria-label="Bubble position">
             <button class="auto active" data-position="auto" type="button" aria-label="Auto align near pet head">Auto</button>
+            <button class="manual" data-position="manual" type="button" aria-label="Manual bubble placement">Drag</button>
             <button data-position="top-left" type="button" aria-label="Top left"></button>
             <button data-position="top-right" type="button" aria-label="Top right"></button>
             <button data-position="bottom-left" type="button" aria-label="Bottom left"></button>

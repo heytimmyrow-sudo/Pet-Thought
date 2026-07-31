@@ -4,25 +4,25 @@
     "totalBytes": 8388608
   },
   "totals": {
-    "bytes": 117269,
-    "gzipBytes": 56437
+    "bytes": 129332,
+    "gzipBytes": 59283
   },
   "withinBudget": true,
   "files": [
     {
       "path": "index.html",
-      "bytes": 6163,
-      "gzipBytes": 1711
+      "bytes": 7524,
+      "gzipBytes": 1993
     },
     {
       "path": "styles.css",
-      "bytes": 10428,
-      "gzipBytes": 2936
+      "bytes": 11748,
+      "gzipBytes": 3147
     },
     {
       "path": "game.js",
-      "bytes": 24261,
-      "gzipBytes": 7317
+      "bytes": 33643,
+      "gzipBytes": 9670
     },
     {
       "path": "app-photo.png",

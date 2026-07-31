@@ -11,6 +11,7 @@ const phraseInput = document.querySelector("#phraseInput");
 const phraseBtn = document.querySelector("#phraseBtn");
 const shortBtn = document.querySelector("#shortBtn");
 const shuffleAllBtn = document.querySelector("#shuffleAllBtn");
+const styleSelect = document.querySelector("#styleSelect");
 const moodSelect = document.querySelector("#moodSelect");
 const sizeRange = document.querySelector("#sizeRange");
 const textRange = document.querySelector("#textRange");
@@ -18,11 +19,15 @@ const downloadBtn = document.querySelector("#downloadBtn");
 const clearBtn = document.querySelector("#clearBtn");
 const sharePhotoBtn = document.querySelector("#sharePhotoBtn");
 const shareAppBtn = document.querySelector("#shareAppBtn");
+const gallery = document.querySelector("#gallery");
+const galleryStrip = document.querySelector("#galleryStrip");
+const clearGalleryBtn = document.querySelector("#clearGalleryBtn");
 
 const state = {
   image: null,
   pet: "cat",
   bubble: "thought",
+  style: "classic",
   position: "auto",
   mood: "random",
   phrase: "",
@@ -30,10 +35,14 @@ const state = {
   textScale: 1,
   detection: null,
   imageFit: null,
-  warning: ""
+  warning: "",
+  manual: null,
+  lastBubble: null
 };
 
 let detectorPromise = null;
+let dragMode = null;
+const galleryKey = "petThoughtGallery";
 
 const phrases = {
   cat: {
@@ -239,8 +248,51 @@ const shortPhrases = [
   "Soft plans."
 ];
 
+const sharedPacks = {
+  birthday: [
+    "I wore my birthday fluff.",
+    "All treats are birthday treats.",
+    "Please admire my party face.",
+    "I am the tiny guest of honor.",
+    "Cake is just snack architecture.",
+    "My wish is more snacks.",
+    "This hat is legally suspicious.",
+    "Another year, same excellent paws."
+  ],
+  morning: [
+    "Good morning. I require ceremony.",
+    "The sun is up. So are my needs.",
+    "Breakfast should be immediate.",
+    "I woke up adorable again.",
+    "Morning meeting: me, you, snacks.",
+    "Please start the day with admiration.",
+    "I have fresh thoughts and one yawn.",
+    "The blanket has accepted my resignation."
+  ],
+  apology: [
+    "Sorry about the mysterious crash.",
+    "I regret nothing, but I look sorry.",
+    "The evidence is mostly chewed.",
+    "Please accept this innocent face.",
+    "The mess happened near me.",
+    "I was framed by gravity.",
+    "My apology includes tiny eyes.",
+    "I will be good for several minutes."
+  ],
+  holiday: [
+    "Festive fluff has entered the room.",
+    "I am the decoration now.",
+    "Please wrap snacks only.",
+    "This sparkle belongs to me.",
+    "Joy has paws today.",
+    "I inspected the holiday paper.",
+    "Seasonal coziness: approved.",
+    "My gift is being this cute."
+  ]
+};
+
 function allMoodKeys() {
-  return ["food", "royalty", "chaos", "nap", "dramatic", "compliment"];
+  return ["food", "royalty", "chaos", "nap", "dramatic", "compliment", "birthday", "morning", "apology", "holiday"];
 }
 
 function pick(array) {
@@ -259,10 +311,14 @@ function nextPhrase(short = false) {
   } else {
     const pet = state.pet;
     const mood = state.mood === "random" ? pick(allMoodKeys()) : state.mood;
-    state.phrase = pick(phrases[pet][mood]);
+    state.phrase = pick(getPhrasePool(pet, mood));
   }
   phraseInput.value = state.phrase;
   draw();
+}
+
+function getPhrasePool(pet, mood) {
+  return phrases[pet]?.[mood] || sharedPacks[mood] || phrases.either.compliment;
 }
 
 function draw() {
@@ -326,33 +382,51 @@ function drawBubble(width, height) {
   const phrase = (state.phrase || "I am thinking extremely important fluff thoughts.").trim();
   const scale = state.size;
   const margin = 54;
-  const bubbleWidth = Math.min(width - margin * 2, 470 * scale);
-  const baseFont = Math.round(38 * state.textScale);
+  const style = state.style;
+  const widthMultiplier = style === "announcement" || style === "news" ? 1.18 : style === "whisper" ? .78 : 1;
+  const bubbleWidth = Math.min(width - margin * 2, 470 * scale * widthMultiplier);
+  const baseFont = Math.round((style === "whisper" ? 29 : style === "announcement" ? 44 : 38) * state.textScale);
   const lines = wrapText(phrase, bubbleWidth - 76, baseFont);
-  const bubbleHeight = Math.max(160 * scale, lines.length * baseFont * 1.18 + 74);
+  const bubbleHeight = Math.max((style === "sticker" ? 130 : 160) * scale, lines.length * baseFont * 1.18 + 74);
   const pos = bubblePosition(width, height, bubbleWidth, bubbleHeight, margin);
+  state.lastBubble = pos;
 
   ctx.save();
-  ctx.shadowColor = "rgba(36, 31, 33, .28)";
-  ctx.shadowBlur = 24;
-  ctx.shadowOffsetY = 10;
-  ctx.fillStyle = "#ffffff";
-  ctx.strokeStyle = "#2d2728";
-  ctx.lineWidth = 7;
+  ctx.shadowColor = style === "whisper" ? "rgba(36, 31, 33, .16)" : "rgba(36, 31, 33, .28)";
+  ctx.shadowBlur = style === "sticker" ? 12 : 24;
+  ctx.shadowOffsetY = style === "sticker" ? 5 : 10;
+  ctx.fillStyle = style === "news" ? "#fff3c4" : style === "comic" ? "#fffdf2" : "#ffffff";
+  ctx.strokeStyle = style === "news" ? "#191617" : "#2d2728";
+  ctx.lineWidth = style === "whisper" ? 4 : style === "comic" ? 10 : 7;
 
-  if (state.bubble === "speech") {
-    speechTail(pos);
+  if (state.bubble === "speech" || style === "announcement" || style === "news" || style === "sticker") {
+    if (style !== "sticker") speechTail(pos);
   } else {
     thoughtDots(pos);
   }
 
-  roundedRect(pos.x, pos.y, bubbleWidth, bubbleHeight, 42);
+  if (style === "cloud") {
+    cloudBubble(pos.x, pos.y, bubbleWidth, bubbleHeight);
+  } else if (style === "comic") {
+    burstBubble(pos.x, pos.y, bubbleWidth, bubbleHeight);
+  } else if (style === "sticker") {
+    roundedRect(pos.x, pos.y, bubbleWidth, bubbleHeight, 22);
+  } else if (style === "news") {
+    roundedRect(pos.x, pos.y, bubbleWidth, bubbleHeight, 18);
+  } else {
+    roundedRect(pos.x, pos.y, bubbleWidth, bubbleHeight, style === "whisper" ? 26 : 42);
+  }
   ctx.fill();
   ctx.stroke();
+  if (style === "news") {
+    ctx.fillStyle = "#2d2728";
+    ctx.fillRect(pos.x + 22, pos.y + 20, bubbleWidth - 44, 7);
+    ctx.fillRect(pos.x + 22, pos.y + bubbleHeight - 27, bubbleWidth - 44, 7);
+  }
   ctx.restore();
 
   ctx.fillStyle = "#211d1e";
-  ctx.font = `900 ${baseFont}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial`;
+  ctx.font = `${style === "whisper" ? 800 : 900} ${baseFont}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
@@ -363,7 +437,51 @@ function drawBubble(width, height) {
   });
 }
 
+function cloudBubble(x, y, width, height) {
+  const bumps = 12;
+  ctx.beginPath();
+  for (let index = 0; index < bumps; index++) {
+    const angle = (index / bumps) * Math.PI * 2;
+    const px = x + width / 2 + Math.cos(angle) * width * .48;
+    const py = y + height / 2 + Math.sin(angle) * height * .44;
+    const radius = index % 2 ? height * .22 : height * .27;
+    if (index === 0) ctx.moveTo(px + radius, py);
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
+  }
+  roundedRect(x + width * .08, y + height * .12, width * .84, height * .76, 50);
+}
+
+function burstBubble(x, y, width, height) {
+  const spikes = 18;
+  ctx.beginPath();
+  for (let index = 0; index < spikes; index++) {
+    const angle = (index / spikes) * Math.PI * 2;
+    const radiusX = width * (index % 2 ? .49 : .43);
+    const radiusY = height * (index % 2 ? .49 : .42);
+    const px = x + width / 2 + Math.cos(angle) * radiusX;
+    const py = y + height / 2 + Math.sin(angle) * radiusY;
+    if (index === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
 function bubblePosition(width, height, bubbleWidth, bubbleHeight, margin) {
+  if (state.position === "manual" && state.manual) {
+    const x = clamp(state.manual.x, margin, width - bubbleWidth - margin);
+    const y = clamp(state.manual.y, margin, height - bubbleHeight - margin);
+    return {
+      x,
+      y,
+      width: bubbleWidth,
+      height: bubbleHeight,
+      anchorX: clamp(state.manual.targetX, x + 48, x + bubbleWidth - 48),
+      anchorY: y + bubbleHeight / 2,
+      targetX: state.manual.targetX,
+      targetY: state.manual.targetY
+    };
+  }
+
   if (state.position === "auto" && state.detection && state.imageFit) {
     return autoBubblePosition(width, height, bubbleWidth, bubbleHeight, margin);
   }
@@ -404,9 +522,10 @@ function autoBubblePosition(width, height, bubbleWidth, bubbleHeight, margin) {
 
 function headTarget() {
   const box = detectionToCanvasBox(state.detection);
-  const petHeadY = state.pet === "dog" ? .31 : .27;
+  const petHeadY = state.bubble === "speech" ? (state.pet === "dog" ? .43 : .38) : (state.pet === "dog" ? .29 : .25);
+  const petHeadX = state.pet === "dog" ? .52 : .5;
   return {
-    x: clamp(box.x + box.w * .5, 28, canvas.width - 28),
+    x: clamp(box.x + box.w * petHeadX, 28, canvas.width - 28),
     y: clamp(box.y + box.h * petHeadY, 28, canvas.height - 28)
   };
 }
@@ -516,6 +635,86 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function canvasPoint(event) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) / rect.width * canvas.width,
+    y: (event.clientY - rect.top) / rect.height * canvas.height
+  };
+}
+
+function activateManualPlacement(point) {
+  if (!state.lastBubble) return;
+  const target = state.lastBubble.targetX === undefined ? headTargetFallback() : { x: state.lastBubble.targetX, y: state.lastBubble.targetY };
+  state.position = "manual";
+  state.manual = {
+    x: state.lastBubble.x,
+    y: state.lastBubble.y,
+    targetX: target.x,
+    targetY: target.y
+  };
+  document.querySelectorAll("[data-position]").forEach((item) => item.classList.toggle("active", item.dataset.position === "manual"));
+}
+
+function headTargetFallback() {
+  return {
+    x: canvas.width / 2,
+    y: canvas.height * .38
+  };
+}
+
+function hitBubble(point) {
+  const b = state.lastBubble;
+  return b && point.x >= b.x && point.x <= b.x + b.width && point.y >= b.y && point.y <= b.y + b.height;
+}
+
+function hitTarget(point) {
+  const b = state.lastBubble;
+  if (!b || b.targetX === undefined) return false;
+  return Math.hypot(point.x - b.targetX, point.y - b.targetY) < 70;
+}
+
+canvas.addEventListener("pointerdown", (event) => {
+  if (!state.image || !state.lastBubble) return;
+  const point = canvasPoint(event);
+  event.preventDefault();
+  activateManualPlacement(point);
+  if (hitTarget(point)) {
+    dragMode = { type: "target" };
+  } else if (hitBubble(point)) {
+    dragMode = { type: "bubble", offsetX: point.x - state.manual.x, offsetY: point.y - state.manual.y };
+  } else {
+    state.manual.targetX = clamp(point.x, 12, canvas.width - 12);
+    state.manual.targetY = clamp(point.y, 12, canvas.height - 12);
+    dragMode = { type: "target" };
+    draw();
+  }
+  canvas.setPointerCapture(event.pointerId);
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (!dragMode || !state.manual) return;
+  const point = canvasPoint(event);
+  if (dragMode.type === "target") {
+    state.manual.targetX = clamp(point.x, 12, canvas.width - 12);
+    state.manual.targetY = clamp(point.y, 12, canvas.height - 12);
+  } else {
+    state.manual.x = point.x - dragMode.offsetX;
+    state.manual.y = point.y - dragMode.offsetY;
+  }
+  draw();
+});
+
+canvas.addEventListener("pointerup", (event) => {
+  if (!dragMode) return;
+  dragMode = null;
+  canvas.releasePointerCapture(event.pointerId);
+});
+
+canvas.addEventListener("pointercancel", () => {
+  dragMode = null;
+});
+
 function loadFile(file) {
   if (!file || !file.type.startsWith("image/")) return;
   const reader = new FileReader();
@@ -575,9 +774,15 @@ document.querySelectorAll("[data-bubble]").forEach((button) => {
   });
 });
 
+styleSelect.addEventListener("change", () => {
+  state.style = styleSelect.value;
+  draw();
+});
+
 document.querySelectorAll("[data-position]").forEach((button) => {
   button.addEventListener("click", () => {
     state.position = button.dataset.position;
+    if (state.position !== "manual") state.manual = null;
     document.querySelectorAll("[data-position]").forEach((item) => item.classList.toggle("active", item === button));
     draw();
   });
@@ -604,9 +809,12 @@ shortBtn.addEventListener("click", () => nextPhrase(true));
 shuffleAllBtn.addEventListener("click", () => {
   state.pet = pick(["cat", "dog", "either"]);
   state.bubble = pick(["thought", "speech"]);
+  state.style = pick(["classic", "comic", "cloud", "sticker", "whisper", "announcement", "news"]);
   state.position = state.detection ? "auto" : pick(["auto", "top-left", "top-right", "bottom-left", "bottom-right"]);
   state.mood = "random";
+  state.manual = null;
   moodSelect.value = "random";
+  styleSelect.value = state.style;
   document.querySelectorAll("[data-pet]").forEach((item) => item.classList.toggle("active", item.dataset.pet === state.pet));
   document.querySelectorAll("[data-bubble]").forEach((item) => item.classList.toggle("active", item.dataset.bubble === state.bubble));
   document.querySelectorAll("[data-position]").forEach((item) => item.classList.toggle("active", item.dataset.position === state.position));
@@ -627,8 +835,10 @@ sharePhotoBtn.addEventListener("click", async () => {
       await navigator.share({
         files: [file],
         title: "Pet Thought Bubbler",
-        text: "Look what my pet is thinking."
+        text: `Look what my pet is thinking. Make one here: ${window.location.href}`,
+        url: window.location.href
       });
+      saveToGallery(currentImageDataUrl());
       return;
     }
   } catch (error) {
@@ -664,6 +874,7 @@ clearBtn.addEventListener("click", () => {
   state.detection = null;
   state.warning = "";
   state.phrase = "";
+  state.manual = null;
   phraseInput.value = "";
   photoInput.value = "";
   cameraInput.value = "";
@@ -674,17 +885,83 @@ clearBtn.addEventListener("click", () => {
 });
 
 draw();
+renderGallery();
 
 function downloadImage() {
   const link = document.createElement("a");
   link.download = "pet-thought-bubble.png";
-  link.href = canvas.toDataURL("image/png");
+  link.href = currentImageDataUrl();
   link.click();
+  saveToGallery(link.href);
 }
 
 function canvasBlob() {
   return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
 }
+
+function currentImageDataUrl() {
+  return canvas.toDataURL("image/png");
+}
+
+function loadGallery() {
+  try {
+    return JSON.parse(localStorage.getItem(galleryKey) || "[]");
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveToGallery(dataUrl) {
+  const items = loadGallery();
+  items.unshift(dataUrl);
+  for (let count = 6; count >= 1; count--) {
+    try {
+      localStorage.setItem(galleryKey, JSON.stringify(items.slice(0, count)));
+      break;
+    } catch (error) {
+      if (count === 1) localStorage.removeItem(galleryKey);
+    }
+  }
+  renderGallery();
+}
+
+function renderGallery() {
+  const items = loadGallery();
+  gallery.classList.toggle("hidden", !items.length);
+  galleryStrip.innerHTML = "";
+  items.forEach((item, index) => {
+    const button = document.createElement("button");
+    button.className = "gallery-item";
+    button.type = "button";
+    button.setAttribute("aria-label", `Open recent creation ${index + 1}`);
+    const img = document.createElement("img");
+    img.src = item;
+    img.alt = "";
+    button.append(img);
+    button.addEventListener("click", () => loadGalleryImage(item));
+    galleryStrip.append(button);
+  });
+}
+
+function loadGalleryImage(dataUrl) {
+  const image = new Image();
+  image.addEventListener("load", () => {
+    state.image = image;
+    state.detection = null;
+    state.warning = "";
+    state.manual = null;
+    setPhotoVisible(true);
+    emptyState.classList.add("hidden");
+    nextPhrase();
+    setDetectorStatus("Recent creation loaded.", "success");
+  });
+  image.src = dataUrl;
+}
+
+clearGalleryBtn.addEventListener("click", () => {
+  localStorage.removeItem(galleryKey);
+  renderGallery();
+});
 
 async function identifyPet(image) {
   setDetectorStatus("Looking for a cat or dog...");
