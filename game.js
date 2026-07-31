@@ -11,6 +11,10 @@ const G = 1650;
 const PLAYER_SPEED = 330;
 const JUMP_SPEED = 610;
 const MAGNET_DRAG = .992;
+const MAGNET_FORCE_MULT = 1.85;
+const MAGNET_OBJECT_SPEED_CAP = 1080;
+const MAGNET_IMPULSE_SPEED_CAP = 1220;
+const MAGNET_IMPULSE_MULT = .72;
 const PICKUP_COOLDOWN = .22;
 const THROW_HOLD_TIME = .72;
 const keys = new Set();
@@ -88,7 +92,7 @@ function makeTutorial(levelId) {
 }
 
 function body(x, y, w, h, magnetic) {
-  return { x, y, w, h, vx: 0, vy: 0, magnetic };
+  return { x, y, w, h, vx: 0, vy: 0, magnetic, magnetFxCooldown: 0 };
 }
 
 function showScreen(id) {
@@ -129,6 +133,7 @@ function update(dt) {
   game.shake = Math.max(0, game.shake - dt * 14);
   game.messageTimer = Math.max(0, game.messageTimer - dt);
   game.package.hitCooldown = Math.max(0, game.package.hitCooldown - dt);
+  game.package.magnetFxCooldown = Math.max(0, game.package.magnetFxCooldown - dt);
   game.package.pickupCooldown = Math.max(0, game.package.pickupCooldown - dt);
   game.player.pickupCooldown = Math.max(0, game.player.pickupCooldown - dt);
   updatePlates();
@@ -137,6 +142,7 @@ function update(dt) {
   updatePlayer(dt);
   updatePackage(dt);
   game.boxes.forEach((box) => {
+    box.magnetFxCooldown = Math.max(0, box.magnetFxCooldown - dt);
     applyMagnetism(box, dt, .8);
     moveBody(box, dt, solids());
     box.vx *= .985;
@@ -189,7 +195,7 @@ function updatePlayer(dt) {
 
 function applyRobotMagnetism(dt) {
   const p = game.player;
-  const weight = p.carry ? .2 : .08;
+  const weight = p.carry ? .24 : .09;
   for (const m of game.level.magnets || []) {
     const cx = p.x + p.w / 2;
     const cy = p.y + p.h / 2;
@@ -202,6 +208,8 @@ function applyRobotMagnetism(dt) {
     const force = (same ? -1 : 1) * m.strength * falloff * weight;
     p.vx += (dx / dist) * force * dt;
     p.vy += (dy / dist) * force * dt * .45;
+    p.vx = clamp(p.vx, -430, 430);
+    p.vy = clamp(p.vy, -720, 720);
   }
 }
 
@@ -292,14 +300,24 @@ function applyMagnetism(entity, dt, weight) {
     const dist = Math.max(32, Math.hypot(dx, dy));
     if (dist > m.r) continue;
     const same = game.polarity === m.polarity;
-    const falloff = Math.max(.18, 1 - dist / m.r);
-    const force = (same ? -1 : 1) * m.strength * falloff * weight;
+    const falloff = magnetFalloff(dist, m.r);
+    const force = (same ? -1 : 1) * m.strength * MAGNET_FORCE_MULT * falloff * weight;
     entity.vx += (dx / dist) * force * dt;
     entity.vy += (dy / dist) * force * dt * .78;
-    entity.vx = clamp(entity.vx, -760, 760);
-    entity.vy = clamp(entity.vy, -760, 760);
-    if (Math.random() < .32) effects.push({ x: ex, y: ey, vx: (same ? -dx : dx) / dist * 90 + (Math.random() - .5) * 40, vy: (same ? -dy : dy) / dist * 70, color: same ? colors.red : colors.blue, life: .38, r: 2 });
+    entity.vx = clamp(entity.vx, -MAGNET_OBJECT_SPEED_CAP, MAGNET_OBJECT_SPEED_CAP);
+    entity.vy = clamp(entity.vy, -MAGNET_OBJECT_SPEED_CAP, MAGNET_OBJECT_SPEED_CAP);
+    if (Math.random() < .44) effects.push({ x: ex, y: ey, vx: (same ? -dx : dx) / dist * 130 + (Math.random() - .5) * 60, vy: (same ? -dy : dy) / dist * 105, color: same ? colors.red : colors.blue, life: .42, r: 2.6 });
+    if (Math.abs(force) > 1200 && entity.magnetFxCooldown <= 0) {
+      entity.magnetFxCooldown = .18;
+      burst(ex, ey, same ? colors.red : colors.blue, 7);
+      effects.push({ x: ex, y: ey, vx: (same ? -dx : dx) / dist * 180, vy: (same ? -dy : dy) / dist * 160, color: same ? colors.red : colors.blue, life: .28, r: 7 });
+    }
   }
+}
+
+function magnetFalloff(dist, range) {
+  const proximity = clamp(1 - dist / range, 0, 1);
+  return .14 + Math.pow(proximity, 1.7) * 1.75;
 }
 
 function polarityImpulse() {
@@ -313,12 +331,13 @@ function polarityImpulse() {
       const dist = Math.max(30, Math.hypot(dx, dy));
       if (dist > m.r + 80) continue;
       const same = game.polarity === m.polarity;
-      const amount = (same ? -1 : 1) * Math.max(180, m.strength * .34 * (1 - Math.min(dist, m.r) / (m.r + 1)));
+      const proximity = clamp(1 - Math.min(dist, m.r) / (m.r + 1), 0, 1);
+      const amount = (same ? -1 : 1) * Math.max(320, m.strength * MAGNET_IMPULSE_MULT * (.5 + Math.pow(proximity, 1.45)));
       entity.vx += (dx / dist) * amount;
       entity.vy += (dy / dist) * amount * .72;
-      entity.vx = clamp(entity.vx, -820, 820);
-      entity.vy = clamp(entity.vy, -820, 820);
-      burst(entity.x + entity.w / 2, entity.y + entity.h / 2, same ? colors.red : colors.blue, 10);
+      entity.vx = clamp(entity.vx, -MAGNET_IMPULSE_SPEED_CAP, MAGNET_IMPULSE_SPEED_CAP);
+      entity.vy = clamp(entity.vy, -MAGNET_IMPULSE_SPEED_CAP, MAGNET_IMPULSE_SPEED_CAP);
+      burst(entity.x + entity.w / 2, entity.y + entity.h / 2, same ? colors.red : colors.blue, 18);
     }
   });
 }
@@ -554,7 +573,7 @@ function drawMagneticArrows() {
   const targets = [game.package, ...game.boxes].filter((item) => item.magnetic && !item.carried);
   targets.forEach((entity) => {
     const force = magneticForceVector(entity);
-    drawForceArrow(entity.x + entity.w / 2, entity.y - 10, entity.h, force, .08, 70);
+    drawForceArrow(entity.x + entity.w / 2, entity.y - 10, entity.h, force, .055, 58);
   });
   const robotForce = robotForceVector();
   drawForceArrow(game.player.x + game.player.w / 2, game.player.y - 8, game.player.h, robotForce, .16, 45);
@@ -563,7 +582,7 @@ function drawMagneticArrows() {
 function drawForceArrow(cx, cy, height, force, scale, threshold) {
   const mag = Math.hypot(force.x, force.y);
   if (mag < threshold) return;
-  const len = clamp(mag * scale, 18, 54);
+  const len = clamp(mag * scale, 18, 68);
   const nx = force.x / mag;
   const ny = force.y / mag;
   ctx.save();
@@ -595,8 +614,8 @@ function magneticForceVector(entity) {
     const dist = Math.max(32, Math.hypot(dx, dy));
     if (dist > m.r) continue;
     const same = game.polarity === m.polarity;
-    const falloff = Math.max(.18, 1 - dist / m.r);
-    const force = (same ? -1 : 1) * m.strength * falloff;
+    const falloff = magnetFalloff(dist, m.r);
+    const force = (same ? -1 : 1) * m.strength * MAGNET_FORCE_MULT * falloff;
     x += (dx / dist) * force;
     y += (dy / dist) * force * .78;
   }
@@ -617,7 +636,7 @@ function robotForceVector() {
     const dist = Math.max(36, Math.hypot(dx, dy));
     if (dist > range) continue;
     const same = game.polarity === m.polarity;
-    const force = (same ? -1 : 1) * m.strength * (1 - dist / range) * weight;
+    const force = (same ? -1 : 1) * m.strength * magnetFalloff(dist, range) * weight;
     x += (dx / dist) * force;
     y += (dy / dist) * force * .45;
   }
@@ -769,6 +788,12 @@ function drawEffects() {
     ctx.globalAlpha = Math.max(0, e.life * 3);
     ctx.fillStyle = e.color;
     ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
+    if (e.r > 5) {
+      ctx.globalAlpha = Math.max(0, e.life * 1.8);
+      ctx.strokeStyle = e.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1 + (1 - e.life)), 0, Math.PI * 2); ctx.stroke();
+    }
     ctx.globalAlpha = 1;
   });
 }
@@ -898,11 +923,11 @@ function flipPolarity() {
   game.didFlip = true;
   game.flipFlash = 1;
   game.flipCooldown = .35;
-  game.shake = 7;
+  game.shake = 9;
   game.messageTimer = 0;
   polarityImpulse();
-  burst(W / 2, H / 2, game.polarity === 1 ? colors.red : colors.blue, 56);
-  ping(game.polarity === 1 ? 300 : 190, .075, "sawtooth");
+  burst(W / 2, H / 2, game.polarity === 1 ? colors.red : colors.blue, 78);
+  ping(game.polarity === 1 ? 330 : 205, .085, "sawtooth");
   window.setTimeout(() => ping(game.polarity === 1 ? 430 : 280, .04, "square"), 50);
 }
 
