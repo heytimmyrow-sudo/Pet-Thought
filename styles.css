@@ -254,6 +254,50 @@ canvas {
   object-fit: cover;
 }
 
+.inline-qr {
+  margin-top: 12px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 86px auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(222, 212, 195, .94);
+  border-radius: 8px;
+  background: rgba(255, 254, 250, .86);
+  box-shadow: var(--shadow-soft);
+}
+.inline-qr span {
+  display: block;
+  margin-bottom: 3px;
+  color: #7d6244;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.inline-qr p {
+  margin: 0;
+  color: var(--soft-ink);
+  font-size: 13px;
+  font-weight: 800;
+  line-break: anywhere;
+}
+.inline-qr-code {
+  width: 86px;
+  height: 86px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #fff;
+}
+.inline-qr-code svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.inline-qr-actions {
+  display: grid;
+  gap: 5px;
+}
+
 .controls {
   padding: 18px;
   display: flex;
@@ -679,6 +723,13 @@ input[type="range"] {
   .controls { grid-template-columns: 1fr; }
   .actions { grid-template-columns: 1fr; }
   .qr-actions { grid-template-columns: 1fr; }
+  .inline-qr {
+    grid-template-columns: 1fr 86px;
+  }
+  .inline-qr-actions {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
+  }
   .empty-camera { display: inline-flex; }
   .position-grid { grid-template-columns: 68px 68px repeat(2, 42px); }
   .sticker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }

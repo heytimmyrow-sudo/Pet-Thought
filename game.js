@@ -32,6 +32,10 @@ const qrCodeBox = document.querySelector("#qrCodeBox");
 const qrUrlText = document.querySelector("#qrUrlText");
 const copyQrLinkBtn = document.querySelector("#copyQrLinkBtn");
 const downloadQrBtn = document.querySelector("#downloadQrBtn");
+const inlineQrBox = document.querySelector("#inlineQrBox");
+const inlineQrUrlText = document.querySelector("#inlineQrUrlText");
+const copyInlineQrLinkBtn = document.querySelector("#copyInlineQrLinkBtn");
+const downloadInlineQrBtn = document.querySelector("#downloadInlineQrBtn");
 const phraseChoices = document.querySelector("#phraseChoices");
 const doodleBtn = document.querySelector("#doodleBtn");
 const doodleColor = document.querySelector("#doodleColor");
@@ -649,7 +653,7 @@ function nextPhrase(short = false) {
     state.phrase = personalizePhrase(contextualPhrase(true) || pick(shortPhrases));
   } else {
     state.phraseOptions = buildPhraseOptions(3);
-    state.phrase = state.phraseOptions[0] || personalizePhrase(pick(getPhrasePool(state.pet, selectedMood())));
+    state.phrase = state.phraseOptions[0] || fallbackPhrase();
     renderPhraseChoices(state.phraseOptions);
   }
   phraseInput.value = state.phrase;
@@ -670,10 +674,17 @@ function selectedMood() {
 
 function buildPhraseOptions(count) {
   const options = [];
-  const attempts = count * 8;
+  const mood = selectedMood();
+  const attempts = count * 14;
   for (let index = 0; index < attempts && options.length < count; index++) {
-    const phrase = personalizePhrase(buildContextPhrase(selectedMood(), false) || pick(getPhrasePool(state.pet, selectedMood())));
+    const phrase = personalizePhrase(buildContextPhrase(mood, false) || (!state.sceneTags.length ? pick(getPhrasePool(state.pet, mood)) : ""));
     if (!options.includes(phrase)) options.push(phrase);
+  }
+  while (options.length < count && state.sceneTags.length) {
+    const tag = state.sceneTags[options.length % state.sceneTags.length];
+    const phrase = personalizePhrase(sceneFallbackPhrase(tag));
+    if (!options.includes(phrase)) options.push(phrase);
+    else break;
   }
   return options;
 }
@@ -686,6 +697,34 @@ function buildContextPhrase(mood, short = false) {
   const base = pick([...(pack[state.pet] || []), ...(pack.either || [])]);
   if (short) return shortenContextPhrase(tag, base);
   return adaptPhraseForMood(base, mood, tag);
+}
+
+function fallbackPhrase() {
+  if (state.sceneTags.length) return personalizePhrase(sceneFallbackPhrase(state.sceneTags[0]));
+  return personalizePhrase(pick(getPhrasePool(state.pet, selectedMood())));
+}
+
+function sceneFallbackPhrase(tag) {
+  const labels = {
+    food: "the snack situation",
+    couch: "this cozy couch scene",
+    bed: "this sleepy bed scene",
+    person: "my human in this photo",
+    computer: "this computer situation",
+    toy: "this toy moment",
+    outside: "this outdoor adventure",
+    vehicle: "this travel moment",
+    plant: "this leafy scene",
+    bag: "this bag situation",
+    bathroom: "this suspicious bathroom scene",
+    closeup: "this close-up face moment"
+  };
+  const subject = labels[tag] || "this photo";
+  return pick([
+    `I have reviewed ${subject}.`,
+    `${petLabel()} has important thoughts about ${subject}.`,
+    `This picture is mostly about ${subject}.`
+  ]);
 }
 
 function weightedSceneTags() {
@@ -797,6 +836,7 @@ function draw() {
 
 function setPhotoVisible(hasPhoto) {
   app.classList.toggle("has-photo", hasPhoto);
+  if (hasPhoto) renderQrCode(inlineQrBox, inlineQrUrlText, 3);
 }
 
 function drawCoverImage(image, width, height) {
@@ -860,8 +900,8 @@ function drawBubble(width, height) {
   ctx.strokeStyle = style === "news" ? "#191617" : "#2d2728";
   ctx.lineWidth = style === "whisper" ? 4 : style === "comic" ? 10 : 7;
 
-  if (state.bubble === "speech" || style === "announcement" || style === "news" || style === "sticker") {
-    if (style !== "sticker") speechTail(pos);
+  if (state.bubble === "speech") {
+    speechTail(pos);
   } else {
     thoughtDots(pos);
   }
@@ -966,6 +1006,7 @@ function burstBubble(x, y, width, height) {
 }
 
 function bubblePosition(width, height, bubbleWidth, bubbleHeight, margin) {
+  const target = bubbleTarget();
   if (state.position === "manual" && state.manual) {
     const x = clamp(state.manual.x, margin, width - bubbleWidth - margin);
     const y = clamp(state.manual.y, margin, height - bubbleHeight - margin);
@@ -993,7 +1034,20 @@ function bubblePosition(width, height, bubbleWidth, bubbleHeight, margin) {
     "bottom-left": { x: margin, y: yBottom, width: bubbleWidth, height: bubbleHeight, anchorX: margin + bubbleWidth * .24, anchorY: yBottom },
     "bottom-right": { x: xRight, y: yBottom, width: bubbleWidth, height: bubbleHeight, anchorX: xRight + bubbleWidth * .76, anchorY: yBottom }
   };
-  return positions[state.position] || positions["top-right"];
+  const pos = positions[state.position] || positions["top-right"];
+  if (target) {
+    pos.targetX = target.x;
+    pos.targetY = target.y;
+    pos.anchorX = clamp(target.x, pos.x + 48, pos.x + pos.width - 48);
+    pos.anchorY = clamp(target.y, pos.y + 36, pos.y + pos.height - 36);
+  }
+  return pos;
+}
+
+function bubbleTarget() {
+  if (state.position === "manual" && state.manual) return { x: state.manual.targetX, y: state.manual.targetY };
+  if (state.detection && state.imageFit) return headTarget();
+  return null;
 }
 
 function autoBubblePosition(width, height, bubbleWidth, bubbleHeight, margin) {
@@ -1047,10 +1101,16 @@ function detectionToCanvasBox(detection) {
 function speechTail(pos) {
   if (pos.targetX !== undefined) {
     ctx.beginPath();
-    const baseX = clamp(pos.targetX, pos.x + 62, pos.x + pos.width - 62);
-    const baseY = clamp(pos.targetY < pos.y ? pos.y + 14 : pos.y + pos.height - 14, pos.y + 14, pos.y + pos.height - 14);
-    ctx.moveTo(baseX - 52, baseY);
-    ctx.lineTo(baseX + 52, baseY);
+    const edge = tailBaseTowardTarget(pos);
+    const horizontal = edge.side === "top" || edge.side === "bottom";
+    const halfBase = 42;
+    if (horizontal) {
+      ctx.moveTo(edge.x - halfBase, edge.y);
+      ctx.lineTo(edge.x + halfBase, edge.y);
+    } else {
+      ctx.moveTo(edge.x, edge.y - halfBase);
+      ctx.lineTo(edge.x, edge.y + halfBase);
+    }
     ctx.lineTo(pos.targetX, pos.targetY);
     ctx.closePath();
     ctx.fill();
@@ -1068,6 +1128,18 @@ function speechTail(pos) {
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
+}
+
+function tailBaseTowardTarget(pos) {
+  const targetX = pos.targetX;
+  const targetY = pos.targetY;
+  const distances = [
+    { side: "top", value: Math.abs(targetY - pos.y), x: clamp(targetX, pos.x + 70, pos.x + pos.width - 70), y: pos.y + 8 },
+    { side: "bottom", value: Math.abs(targetY - (pos.y + pos.height)), x: clamp(targetX, pos.x + 70, pos.x + pos.width - 70), y: pos.y + pos.height - 8 },
+    { side: "left", value: Math.abs(targetX - pos.x), x: pos.x + 8, y: clamp(targetY, pos.y + 58, pos.y + pos.height - 58) },
+    { side: "right", value: Math.abs(targetX - (pos.x + pos.width)), x: pos.x + pos.width - 8, y: clamp(targetY, pos.y + 58, pos.y + pos.height - 58) }
+  ];
+  return distances.sort((a, b) => a.value - b.value)[0];
 }
 
 function thoughtDots(pos) {
@@ -1165,7 +1237,7 @@ async function copyAppLink() {
 }
 
 function showQrCode() {
-  renderQrCode();
+  renderQrCode(qrCodeBox, qrUrlText, 7);
   qrModal.classList.remove("hidden");
   qrCloseBtn.focus();
 }
@@ -1175,22 +1247,34 @@ function hideQrCode() {
   qrBtn.focus();
 }
 
-function renderQrCode() {
-  qrUrlText.textContent = publicAppUrl;
-  qrCodeBox.innerHTML = "";
+function renderQrCode(targetBox = qrCodeBox, targetText = qrUrlText, cellSize = 7) {
+  targetText.textContent = publicAppUrl;
+  targetBox.innerHTML = "";
   if (typeof qrcode !== "function") {
-    qrCodeBox.textContent = "QR code is loading.";
+    targetBox.textContent = "QR code is loading.";
     return;
   }
   const qr = qrcode(0, "M");
   qr.addData(publicAppUrl);
   qr.make();
-  qrCodeBox.innerHTML = qr.createSvgTag(7, 3);
+  targetBox.innerHTML = qr.createSvgTag(cellSize, 3);
 }
 
 function downloadQrCode() {
-  renderQrCode();
+  renderQrCode(qrCodeBox, qrUrlText, 7);
   const svg = qrCodeBox.querySelector("svg");
+  if (!svg) return;
+  const blob = new Blob([svg.outerHTML], { type: "image/svg+xml" });
+  const link = document.createElement("a");
+  link.download = "pet-thought-bubbler-qr.svg";
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function downloadInlineQrCode() {
+  renderQrCode(inlineQrBox, inlineQrUrlText, 3);
+  const svg = inlineQrBox.querySelector("svg");
   if (!svg) return;
   const blob = new Blob([svg.outerHTML], { type: "image/svg+xml" });
   const link = document.createElement("a");
@@ -1469,6 +1553,14 @@ copyQrLinkBtn.addEventListener("click", async () => {
 
 downloadQrBtn.addEventListener("click", () => {
   downloadQrCode();
+});
+
+copyInlineQrLinkBtn.addEventListener("click", async () => {
+  await copyAppLink();
+});
+
+downloadInlineQrBtn.addEventListener("click", () => {
+  downloadInlineQrCode();
 });
 
 shuffleAllBtn.addEventListener("click", () => {
