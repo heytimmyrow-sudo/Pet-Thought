@@ -73,6 +73,23 @@ const cases = [
       { class: "laptop", score: .88, bbox: [450, 330, 260, 160] }
     ],
     expected: ["near_computer", "computer"]
+  },
+  {
+    name: "pet near bowl",
+    pet: { class: "dog", score: .95, bbox: [250, 260, 260, 270] },
+    predictions: [
+      { class: "dog", score: .95, bbox: [250, 260, 260, 270] },
+      { class: "bowl", score: .9, bbox: [520, 430, 120, 80] }
+    ],
+    expected: ["near_food", "bowl"]
+  },
+  {
+    name: "pet on floor",
+    pet: { class: "dog", score: .95, bbox: [300, 480, 260, 250] },
+    predictions: [
+      { class: "dog", score: .95, bbox: [300, 480, 260, 250] }
+    ],
+    expected: ["floor"]
   }
 ];
 

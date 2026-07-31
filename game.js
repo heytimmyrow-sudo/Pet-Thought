@@ -10,6 +10,7 @@ const detectorStatus = document.querySelector("#detectorStatus");
 const phraseInput = document.querySelector("#phraseInput");
 const phraseBtn = document.querySelector("#phraseBtn");
 const shortBtn = document.querySelector("#shortBtn");
+const badPhraseBtn = document.querySelector("#badPhraseBtn");
 const shuffleAllBtn = document.querySelector("#shuffleAllBtn");
 const petNameInput = document.querySelector("#petNameInput");
 const styleSelect = document.querySelector("#styleSelect");
@@ -75,6 +76,7 @@ let detectorPromise = null;
 let dragMode = null;
 let activeStroke = null;
 const galleryKey = "petThoughtGallery";
+const reportedPhraseKey = "petThoughtReportedPhrases";
 const publicAppUrl = "https://new-games-jcrow.timmyrow.chatgpt.site";
 
 const phrases = {
@@ -535,6 +537,146 @@ const scenePhrasePacks = {
       "I am close to someone important."
     ]
   },
+  floor: {
+    cat: [
+      "This floor has been selected for cat business.",
+      "I am on floor patrol with quiet authority.",
+      "The floor is beneath me and therefore important.",
+      "I have claimed this floor-level situation."
+    ],
+    dog: [
+      "I am on the floor and ready for action.",
+      "This floor has excellent flop potential.",
+      "I brought dog energy to the floor zone.",
+      "The floor is currently my command center."
+    ],
+    either: [
+      "This floor scene has my full attention.",
+      "I am making the floor look important.",
+      "The floor situation has been approved.",
+      "Ground-level cuteness has been detected."
+    ]
+  },
+  window: {
+    cat: [
+      "This window is my tiny theater.",
+      "I am monitoring the window for suspicious movement.",
+      "The window has excellent bird television.",
+      "I have important window-watching duties."
+    ],
+    dog: [
+      "This window contains breaking neighborhood news.",
+      "I am supervising the window with my nose.",
+      "The window view needs more tail energy.",
+      "I spotted window activity and became official."
+    ],
+    either: [
+      "The window scene has my attention.",
+      "I am reviewing the view through this window.",
+      "This window has become an important lookout.",
+      "Window watching is serious pet work."
+    ]
+  },
+  crate: {
+    cat: [
+      "This crate has been inspected by cat management.",
+      "I am judging this crate from a safe attitude.",
+      "The crate situation requires whisker review.",
+      "This crate is now part of my investigation."
+    ],
+    dog: [
+      "This crate is my little den checkpoint.",
+      "I am near the crate and doing brave thoughts.",
+      "The crate has been reviewed by dog leadership.",
+      "This crate scene could use a treat."
+    ],
+    either: [
+      "This crate has been officially considered.",
+      "I have important crate opinions.",
+      "The crate situation is under pet review.",
+      "This little den zone has been noticed."
+    ]
+  },
+  leash: {
+    cat: [
+      "This leash raises several cat questions.",
+      "I am near the leash and negotiating terms.",
+      "The leash situation seems suspiciously outdoor.",
+      "This leash has entered my formal complaint."
+    ],
+    dog: [
+      "The leash is here, so walk hopes are rising.",
+      "I am near the leash and emotionally prepared.",
+      "This leash means adventure might be loading.",
+      "The leash situation has activated my optimism."
+    ],
+    either: [
+      "This leash has become the main topic.",
+      "I have noticed the leash situation.",
+      "The leash nearby suggests possible adventure.",
+      "This leash requires immediate pet analysis."
+    ]
+  },
+  bowl: {
+    cat: [
+      "This bowl is under strict cat inspection.",
+      "I am evaluating the bowl with great seriousness.",
+      "The bowl situation affects me personally.",
+      "This bowl has my full snack attention."
+    ],
+    dog: [
+      "This bowl and I have important business.",
+      "I am monitoring the bowl for improvements.",
+      "The bowl situation could use more snacks.",
+      "This bowl has excellent refill potential."
+    ],
+    either: [
+      "The bowl has been noticed immediately.",
+      "This bowl scene requires snack analysis.",
+      "I am thinking bowl-related thoughts.",
+      "The bowl situation is highly relevant."
+    ]
+  },
+  blanket: {
+    cat: [
+      "This blanket has accepted my cat shape.",
+      "I am improving the blanket with my presence.",
+      "The blanket is under soft cat management.",
+      "This blanket situation is extremely approved."
+    ],
+    dog: [
+      "This blanket is better because I am here.",
+      "I brought warmth to the blanket zone.",
+      "The blanket and I are having a cozy meeting.",
+      "This blanket scene needs one more snuggle."
+    ],
+    either: [
+      "This blanket has excellent cozy energy.",
+      "I am supervising the blanket situation.",
+      "The blanket has become very important.",
+      "This soft blanket scene has been approved."
+    ]
+  },
+  rug: {
+    cat: [
+      "This rug is my low-profile throne.",
+      "I am decorating the rug with importance.",
+      "The rug has been claimed by cat law.",
+      "This rug scene needed more whiskers."
+    ],
+    dog: [
+      "This rug is perfect for dramatic flopping.",
+      "I am bringing dog charm to the rug.",
+      "The rug has become my cozy checkpoint.",
+      "This rug scene has excellent paw placement."
+    ],
+    either: [
+      "This rug has been officially noticed.",
+      "I am making the rug look more important.",
+      "The rug situation is now pet-approved.",
+      "This rug scene has strong cozy potential."
+    ]
+  },
   table: {
     cat: [
       "This table is my observation platform.",
@@ -844,12 +986,12 @@ function buildPhraseOptions(count) {
   const attempts = count * 14;
   for (let index = 0; index < attempts && options.length < count; index++) {
     const phrase = personalizePhrase(buildContextPhrase(mood, false) || (!state.sceneTags.length ? pick(getPhrasePool(state.pet, mood)) : ""));
-    if (phrase && !options.includes(phrase)) options.push(phrase);
+    if (phrase && !isReportedPhrase(phrase) && !options.includes(phrase)) options.push(phrase);
   }
   while (options.length < count && state.sceneTags.length) {
     const tag = state.sceneTags[options.length % state.sceneTags.length];
     const phrase = personalizePhrase(sceneFallbackPhrase(tag));
-    if (!options.includes(phrase)) options.push(phrase);
+    if (!isReportedPhrase(phrase) && !options.includes(phrase)) options.push(phrase);
     else break;
   }
   return options;
@@ -879,6 +1021,13 @@ function sceneFallbackPhrase(tag) {
     near_toy: "this nearby toy",
     near_computer: "this nearby computer",
     with_person: "being with my human",
+    floor: "this floor scene",
+    window: "this window scene",
+    crate: "this crate scene",
+    leash: "this leash situation",
+    bowl: "this bowl scene",
+    blanket: "this blanket scene",
+    rug: "this rug scene",
     table: "this table scene",
     food: "the snack situation",
     couch: "this cozy couch scene",
@@ -907,6 +1056,10 @@ function weightedSceneTags() {
   ["on_table", "on_couch", "on_bed", "near_food", "near_toy", "near_computer", "with_person"].forEach((tag) => {
     if (tags.includes(tag)) tags.push(tag, tag, tag, tag);
   });
+  ["floor", "window", "crate", "leash", "blanket", "rug"].forEach((tag) => {
+    if (tags.includes(tag)) tags.push(tag);
+  });
+  if (tags.includes("bowl")) tags.push("bowl", "bowl", "bowl", "bowl");
   if (tags.includes("table")) tags.push("table", "table", "table");
   if (tags.includes("computer")) tags.push("computer");
   if (tags.includes("toy")) tags.push("toy");
@@ -955,6 +1108,13 @@ function shortenContextPhrase(tag, base) {
     near_toy: ["Toy nearby.", "Play range.", "Toy watch."],
     near_computer: ["Work watch.", "Screen zone.", "Computer boss."],
     with_person: ["With human.", "My person.", "Team photo."],
+    floor: ["Floor patrol.", "Ground boss.", "Floor thoughts."],
+    window: ["Window watch.", "View report.", "Lookout mode."],
+    crate: ["Crate report.", "Den thoughts.", "Crate watch."],
+    leash: ["Leash alert.", "Walk hopes.", "Adventure soon?"],
+    bowl: ["Bowl watch.", "Snack bowl.", "Refill thoughts."],
+    blanket: ["Blanket mode.", "Cozy blanket.", "Soft boss."],
+    rug: ["Rug claimed.", "Floor cozy.", "Rug thoughts."],
     table: ["Table claimed.", "Surface boss.", "Table thoughts."],
     food: ["Snack scene.", "Treat alert.", "Food thoughts."],
     couch: ["Couch claimed.", "Cozy boss.", "Soft spot."],
@@ -1003,6 +1163,45 @@ function renderPhraseChoices(options) {
     });
     phraseChoices.append(button);
   });
+}
+
+function reportedPhrases() {
+  try {
+    return JSON.parse(localStorage.getItem(reportedPhraseKey) || "[]");
+  } catch (error) {
+    return [];
+  }
+}
+
+function normalizePhraseForReport(phrase) {
+  return phrase.trim().toLowerCase();
+}
+
+function isReportedPhrase(phrase) {
+  const normalized = normalizePhraseForReport(phrase);
+  return reportedPhrases().some((item) => item === normalized);
+}
+
+function reportCurrentPhrase() {
+  const phrase = state.phrase.trim();
+  if (!phrase || state.warning) {
+    setDetectorStatus("Pick a phrase first, then report it if it feels wrong.", "warning");
+    return;
+  }
+  const reports = reportedPhrases();
+  const normalized = normalizePhraseForReport(phrase);
+  if (!reports.includes(normalized)) {
+    reports.unshift(normalized);
+    localStorage.setItem(reportedPhraseKey, JSON.stringify(reports.slice(0, 80)));
+  }
+  state.phraseOptions = state.phraseOptions.filter((option) => normalizePhraseForReport(option) !== normalized);
+  state.awaitingCaptionChoice = true;
+  state.phrase = "";
+  phraseInput.value = "";
+  state.phraseOptions = state.phraseOptions.length >= 3 ? state.phraseOptions : buildPhraseOptions(3);
+  renderPhraseChoices(state.phraseOptions);
+  setDetectorStatus("Got it. I will avoid that phrase on this device.", "success");
+  draw();
 }
 
 function draw() {
@@ -1757,6 +1956,7 @@ textRange.addEventListener("input", () => {
 });
 phraseBtn.addEventListener("click", () => nextPhrase());
 shortBtn.addEventListener("click", () => nextPhrase(true));
+badPhraseBtn.addEventListener("click", () => reportCurrentPhrase());
 document.querySelectorAll("[data-sticker]").forEach((button) => {
   button.addEventListener("click", () => {
     if (!state.image) return;
@@ -1866,6 +2066,7 @@ sharePhotoBtn.addEventListener("click", async () => {
         url: publicAppUrl
       });
       saveToGallery(currentImageDataUrl());
+      setDetectorStatus("Photo shared.", "success");
       return;
     }
   } catch (error) {
@@ -1886,6 +2087,7 @@ shareAppBtn.addEventListener("click", async () => {
   try {
     if (navigator.share) {
       await navigator.share(shareData);
+      setDetectorStatus("App shared.", "success");
       return;
     }
   } catch (error) {
@@ -2047,7 +2249,7 @@ async function identifyPet(image) {
       state.warning = "";
       setActivePet(pet.class);
       const sceneNote = state.sceneTags.length ? ` Scene clues: ${state.sceneTags.slice(0, 3).map(displaySceneTag).join(", ")}.` : "";
-      setDetectorStatus(`Looks like a ${pet.class}${primaryRelationshipText()}. Pick a phrase to add the bubble.${sceneNote}`, "success");
+      setDetectorStatus(`${petConfidenceText(pet)} Pick a phrase to add the bubble.${sceneNote}`, "success");
       nextPhrase();
       return;
     }
@@ -2084,7 +2286,8 @@ function sceneTagsFromPredictions(predictions, pet) {
 
   addRelationshipTags(tagSet, strongObjects, petBox);
   addTagForAny(tagSet, classNames, "table", ["dining table"]);
-  addTagForAny(tagSet, classNames, "food", ["banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "bowl", "cup", "wine glass", "fork", "knife", "spoon"]);
+  addTagForAny(tagSet, classNames, "bowl", ["bowl"]);
+  addTagForAny(tagSet, classNames, "food", ["banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "cup", "wine glass", "fork", "knife", "spoon"]);
   addTagForAny(tagSet, classNames, "couch", ["couch", "chair"]);
   addTagForAny(tagSet, classNames, "bed", ["bed"]);
   addTagForAny(tagSet, classNames, "person", ["person"]);
@@ -2095,11 +2298,17 @@ function sceneTagsFromPredictions(predictions, pet) {
   addTagForAny(tagSet, classNames, "plant", ["potted plant"]);
   addTagForAny(tagSet, classNames, "bag", ["backpack", "handbag", "suitcase"]);
   addTagForAny(tagSet, classNames, "bathroom", ["toilet", "sink", "toothbrush", "hair drier"]);
+  addTagForAny(tagSet, classNames, "window", ["window"]);
+  addTagForAny(tagSet, classNames, "crate", ["crate", "cage", "kennel"]);
+  addTagForAny(tagSet, classNames, "leash", ["leash", "dog leash"]);
+  addTagForAny(tagSet, classNames, "blanket", ["blanket"]);
+  addTagForAny(tagSet, classNames, "rug", ["rug", "carpet"]);
 
   if (pet?.bbox && state.image) {
     const petArea = pet.bbox[2] * pet.bbox[3];
     const imageArea = state.image.naturalWidth * state.image.naturalHeight;
     if (petArea / imageArea > .42) tagSet.add("closeup");
+    if (!["on_table", "on_couch", "on_bed"].some((tag) => tagSet.has(tag)) && petBox.bottom > state.image.naturalHeight * .72) tagSet.add("floor");
   }
 
   return [...tagSet];
@@ -2171,14 +2380,29 @@ function displaySceneTag(tag) {
     near_food: "near food",
     near_toy: "near a toy",
     near_computer: "near a computer",
-    with_person: "with a person"
+    with_person: "with a person",
+    floor: "on the floor",
+    window: "by a window",
+    crate: "near a crate",
+    leash: "near a leash",
+    bowl: "near a bowl",
+    blanket: "on a blanket",
+    rug: "on a rug"
   };
   return labels[tag] || tag;
 }
 
 function primaryRelationshipText() {
-  const tag = state.sceneTags.find((item) => ["on_table", "on_couch", "on_bed", "near_food", "near_toy", "near_computer", "with_person"].includes(item));
+  const priority = ["on_table", "on_couch", "on_bed", "bowl", "near_food", "near_toy", "near_computer", "with_person", "floor", "window", "crate", "leash", "blanket", "rug"];
+  const tag = priority.find((item) => state.sceneTags.includes(item));
   return tag ? ` ${displaySceneTag(tag)}` : "";
+}
+
+function petConfidenceText(pet) {
+  const confidence = Math.round(pet.score * 100);
+  const relation = primaryRelationshipText();
+  const opener = confidence >= 85 ? "Pretty sure" : confidence >= 65 ? "My best guess" : "Tiny detective guess";
+  return `${opener}: ${pet.class}${relation} (${confidence}%).`;
 }
 
 function loadDetector() {

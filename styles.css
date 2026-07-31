@@ -494,7 +494,7 @@ textarea:focus,
 }
 
 .button-grid {
-  grid-template-columns: 1fr 90px;
+  grid-template-columns: 1fr 84px 112px;
 }
 .btn {
   min-height: 44px;
