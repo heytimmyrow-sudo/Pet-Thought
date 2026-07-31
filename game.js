@@ -11,17 +11,26 @@ const phraseInput = document.querySelector("#phraseInput");
 const phraseBtn = document.querySelector("#phraseBtn");
 const shortBtn = document.querySelector("#shortBtn");
 const shuffleAllBtn = document.querySelector("#shuffleAllBtn");
+const petNameInput = document.querySelector("#petNameInput");
 const styleSelect = document.querySelector("#styleSelect");
 const moodSelect = document.querySelector("#moodSelect");
 const sizeRange = document.querySelector("#sizeRange");
 const textRange = document.querySelector("#textRange");
 const downloadBtn = document.querySelector("#downloadBtn");
 const clearBtn = document.querySelector("#clearBtn");
+const beforeAfterBtn = document.querySelector("#beforeAfterBtn");
+const copyLinkBtn = document.querySelector("#copyLinkBtn");
 const sharePhotoBtn = document.querySelector("#sharePhotoBtn");
 const shareAppBtn = document.querySelector("#shareAppBtn");
 const gallery = document.querySelector("#gallery");
 const galleryStrip = document.querySelector("#galleryStrip");
 const clearGalleryBtn = document.querySelector("#clearGalleryBtn");
+const phraseChoices = document.querySelector("#phraseChoices");
+const doodleBtn = document.querySelector("#doodleBtn");
+const doodleColor = document.querySelector("#doodleColor");
+const doodleSize = document.querySelector("#doodleSize");
+const undoDoodleBtn = document.querySelector("#undoDoodleBtn");
+const clearDoodleBtn = document.querySelector("#clearDoodleBtn");
 
 const state = {
   image: null,
@@ -38,11 +47,18 @@ const state = {
   warning: "",
   manual: null,
   lastBubble: null,
-  sceneTags: []
+  sceneTags: [],
+  petName: "",
+  phraseOptions: [],
+  stickers: [],
+  strokes: [],
+  viewOriginal: false,
+  doodleMode: false
 };
 
 let detectorPromise = null;
 let dragMode = null;
+let activeStroke = null;
 const galleryKey = "petThoughtGallery";
 
 const phrases = {
@@ -289,6 +305,76 @@ const sharedPacks = {
     "I inspected the holiday paper.",
     "Seasonal coziness: approved.",
     "My gift is being this cute."
+  ],
+  hungry: [
+    "Snack thoughts have taken over.",
+    "My tummy has submitted a request.",
+    "The food committee is me.",
+    "I am accepting treat donations.",
+    "A bite would improve morale.",
+    "I have located the snack concept.",
+    "Hunger is my current personality.",
+    "Please respect my tiny appetite."
+  ],
+  sleepy: [
+    "My eyelids are doing paperwork.",
+    "I am entering cozy power-save mode.",
+    "This nap has excellent leadership.",
+    "Please whisper near the fluff.",
+    "Dream snacks are loading.",
+    "I have scheduled a tiny snooze.",
+    "The soft place has chosen me.",
+    "I am mostly blanket now."
+  ],
+  guilty: [
+    "This face denies everything.",
+    "The evidence is surprisingly nearby.",
+    "I was helping in a crunchy way.",
+    "Please note my innocent posture.",
+    "The mess and I are acquaintances.",
+    "I regret the part you noticed.",
+    "My defense is being adorable.",
+    "Nothing happened. Probably."
+  ],
+  excited: [
+    "My feelings are doing zooms.",
+    "This is the best moment so far.",
+    "Joy has activated all paws.",
+    "I brought enthusiasm for everyone.",
+    "My sparkle level is critical.",
+    "Something wonderful is happening.",
+    "I am made of tiny celebration.",
+    "Please observe my happy energy."
+  ],
+  fancy: [
+    "I arrived dressed as importance.",
+    "Elegance is my natural setting.",
+    "Please admire the formal fluff.",
+    "I am attending the gala of me.",
+    "This pose is very exclusive.",
+    "Luxury has a tiny face today.",
+    "My outfit is mostly confidence.",
+    "I am premium household decor."
+  ],
+  confused: [
+    "I have several questions.",
+    "This situation has unusual vibes.",
+    "Why is the thing doing that?",
+    "I am processing the mystery.",
+    "The facts are not sitting nicely.",
+    "Something here requires a sniff.",
+    "I understand nothing with confidence.",
+    "Please explain using snacks."
+  ],
+  boss: [
+    "I am the manager of this photo.",
+    "All decisions go through my paws.",
+    "This household needs my leadership.",
+    "Please submit the snack report.",
+    "I run a very soft operation.",
+    "The agenda is mostly me.",
+    "Tiny boss has entered the frame.",
+    "Meeting adjourned. Bring treats."
   ]
 };
 
@@ -536,7 +622,7 @@ const scenePhrasePacks = {
 };
 
 function allMoodKeys() {
-  return ["food", "royalty", "chaos", "nap", "dramatic", "compliment", "birthday", "morning", "apology", "holiday"];
+  return ["food", "royalty", "chaos", "nap", "dramatic", "compliment", "birthday", "morning", "apology", "holiday", "hungry", "sleepy", "guilty", "excited", "fancy", "confused", "boss"];
 }
 
 function pick(array) {
@@ -547,13 +633,16 @@ function nextPhrase(short = false) {
   if (state.warning) {
     state.phrase = state.warning;
     phraseInput.value = state.phrase;
+    renderPhraseChoices([]);
     draw();
     return;
   }
   if (short) {
-    state.phrase = pick(shortPhrases);
+    state.phrase = personalizePhrase(contextualPhrase(true) || pick(shortPhrases));
   } else {
-    state.phrase = contextualPhrase() || pick(getPhrasePool(state.pet, state.mood === "random" ? pick(allMoodKeys()) : state.mood));
+    state.phraseOptions = buildPhraseOptions(3);
+    state.phrase = state.phraseOptions[0] || personalizePhrase(pick(getPhrasePool(state.pet, selectedMood())));
+    renderPhraseChoices(state.phraseOptions);
   }
   phraseInput.value = state.phrase;
   draw();
@@ -563,12 +652,120 @@ function getPhrasePool(pet, mood) {
   return phrases[pet]?.[mood] || sharedPacks[mood] || phrases.either.compliment;
 }
 
-function contextualPhrase() {
+function contextualPhrase(short = false) {
+  return buildContextPhrase(selectedMood(), short);
+}
+
+function selectedMood() {
+  return state.mood === "random" ? pick(allMoodKeys()) : state.mood;
+}
+
+function buildPhraseOptions(count) {
+  const options = [];
+  const attempts = count * 8;
+  for (let index = 0; index < attempts && options.length < count; index++) {
+    const phrase = personalizePhrase(buildContextPhrase(selectedMood(), false) || pick(getPhrasePool(state.pet, selectedMood())));
+    if (!options.includes(phrase)) options.push(phrase);
+  }
+  return options;
+}
+
+function buildContextPhrase(mood, short = false) {
   if (!state.sceneTags.length) return "";
-  const tag = pick(state.sceneTags);
+  const tag = pick(weightedSceneTags());
   const pack = scenePhrasePacks[tag];
   if (!pack) return "";
-  return pick([...(pack[state.pet] || []), ...(pack.either || [])]);
+  const base = pick([...(pack[state.pet] || []), ...(pack.either || [])]);
+  if (short) return shortenContextPhrase(tag, base);
+  return adaptPhraseForMood(base, mood, tag);
+}
+
+function weightedSceneTags() {
+  const tags = [...state.sceneTags];
+  const mood = state.mood;
+  if (["food", "hungry"].includes(mood) && tags.includes("food")) tags.push("food", "food");
+  if (["nap", "sleepy"].includes(mood) && tags.some((tag) => ["bed", "couch"].includes(tag))) tags.push("bed", "couch");
+  if (["chaos", "excited"].includes(mood) && tags.includes("toy")) tags.push("toy", "toy");
+  if (["compliment", "boss"].includes(mood) && tags.includes("person")) tags.push("person");
+  return tags;
+}
+
+function adaptPhraseForMood(base, mood, tag) {
+  const pet = petLabel();
+  const moodOpeners = {
+    royalty: [`${pet} has claimed this scene: `, `${pet} officially rules here: `],
+    dramatic: ["Emergency thought: ", "A tiny drama report: "],
+    compliment: [`${pet} thinks this photo is excellent: `, "Sweet thought: "],
+    birthday: ["Birthday report: ", "Party thought: "],
+    morning: ["Morning thought: ", "Breakfast-adjacent thought: "],
+    apology: ["Apology note: ", "Innocent-face update: "],
+    holiday: ["Festive thought: ", "Holiday report: "],
+    hungry: ["Snack thought: ", "Treat report: "],
+    sleepy: ["Sleepy thought: ", "Cozy report: "],
+    guilty: ["Innocent thought: ", "Definitely-not-guilty update: "],
+    excited: ["Excited thought: ", "Happy report: "],
+    fancy: ["Fancy thought: ", "Elegant update: "],
+    confused: ["Confused thought: ", "Mystery report: "],
+    boss: [`${pet} says: `, "Tiny boss memo: "]
+  };
+  if (mood === "food" && tag !== "food") return pick(["I am checking whether this scene contains snacks.", `${pet} sees this photo and still requests treats.`, `${base} Also, snacks?`]);
+  if (mood === "hungry" && tag !== "food") return pick([`I searched this ${tag} scene for snacks.`, `${pet} found the ${tag}, but is still thinking about treats.`, `${base} Snacks can arrive after this.`]);
+  if (mood === "nap" && !["bed", "couch", "closeup"].includes(tag)) return pick([`${base} Then I will nap about it.`, "This scene looks like it could use a nap supervisor.", `${pet} can nap after handling this situation.`]);
+  if (mood === "chaos" && tag !== "toy") return pick([`${base} Now let's make it slightly weird.`, "I am helping this scene become more exciting.", `${pet} has chaotic notes about this photo.`]);
+  const openers = moodOpeners[mood];
+  if (!openers) return base;
+  const phrase = `${pick(openers)}${base.charAt(0).toLowerCase()}${base.slice(1)}`;
+  return phrase.length <= 110 ? phrase : base;
+}
+
+function shortenContextPhrase(tag, base) {
+  const shortByTag = {
+    food: ["Snack scene.", "Treat alert.", "Food thoughts."],
+    couch: ["Couch claimed.", "Cozy boss.", "Soft spot."],
+    bed: ["Nap zone.", "Blanket mode.", "Sleepy boss."],
+    person: ["My human.", "Best human.", "Pack time."],
+    computer: ["Work helper.", "Screen boss.", "Laptop thoughts."],
+    toy: ["Throw it.", "Toy joy.", "Play now."],
+    outside: ["Sniff report.", "Fresh air.", "Adventure."],
+    vehicle: ["Ride time.", "Travel snack?", "Tiny trip."],
+    plant: ["Leaf report.", "Plant watch.", "Garden thoughts."],
+    bag: ["Bag mystery.", "Trip supplies.", "Packed fluff."],
+    bathroom: ["Bath concern.", "Wet room.", "Sink thoughts."],
+    closeup: ["My face.", "Boop view.", "Important nose."]
+  };
+  return pick(shortByTag[tag] || [base]);
+}
+
+function personalizePhrase(phrase) {
+  const name = state.petName.trim();
+  if (!name || phrase.includes(name)) return phrase;
+  if (/^(I|My|Please|This|That|The|A|An|Food|Snack|Treat|Tiny|Cozy|Happy|Sweet|Morning|Holiday|Birthday|Party|Elegant|Fancy|Mystery|Innocent|Excited|Sleepy|Travel|Work|Water)/.test(phrase)) {
+    const option = pick([`${name}: ${phrase}`, `${name} thinks: ${phrase}`]);
+    return option.length <= 110 ? option : phrase;
+  }
+  return phrase;
+}
+
+function petLabel() {
+  return state.petName.trim() || (state.pet === "either" ? "This pet" : `This ${state.pet}`);
+}
+
+function renderPhraseChoices(options) {
+  phraseChoices.innerHTML = "";
+  options.forEach((option) => {
+    const button = document.createElement("button");
+    button.className = "phrase-choice";
+    button.type = "button";
+    button.textContent = option;
+    button.classList.toggle("active", option === state.phrase);
+    button.addEventListener("click", () => {
+      state.phrase = option;
+      phraseInput.value = option;
+      renderPhraseChoices(options);
+      draw();
+    });
+    phraseChoices.append(button);
+  });
 }
 
 function draw() {
@@ -578,7 +775,13 @@ function draw() {
 
   if (state.image) {
     drawCoverImage(state.image, width, height);
-    drawBubble(width, height);
+    if (!state.viewOriginal) {
+      drawStickers();
+      drawDoodles();
+      drawBubble(width, height);
+    } else {
+      state.lastBubble = null;
+    }
   } else {
     drawPlaceholder(width, height);
   }
@@ -685,6 +888,44 @@ function drawBubble(width, height) {
   lines.forEach((line, index) => {
     ctx.fillText(line, pos.x + bubbleWidth / 2, firstY + index * lineHeight);
   });
+}
+
+function drawStickers() {
+  state.stickers.forEach((sticker) => {
+    ctx.save();
+    ctx.translate(sticker.x, sticker.y);
+    ctx.rotate(sticker.rotation);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `900 ${sticker.size}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial`;
+    ctx.lineWidth = Math.max(4, sticker.size * .11);
+    ctx.strokeStyle = "rgba(45, 39, 40, .72)";
+    ctx.fillStyle = sticker.color;
+    ctx.strokeText(sticker.symbol, 0, 0);
+    ctx.fillText(sticker.symbol, 0, 0);
+    ctx.restore();
+  });
+}
+
+function drawDoodles() {
+  state.strokes.forEach(drawStroke);
+  if (activeStroke) drawStroke(activeStroke);
+}
+
+function drawStroke(stroke) {
+  if (stroke.points.length < 2) return;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = stroke.color;
+  ctx.lineWidth = stroke.size;
+  ctx.shadowColor = "rgba(36, 31, 33, .18)";
+  ctx.shadowBlur = stroke.size * .45;
+  ctx.beginPath();
+  ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+  stroke.points.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
+  ctx.stroke();
+  ctx.restore();
 }
 
 function cloudBubble(x, y, width, height) {
@@ -885,6 +1126,36 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function addSticker(type) {
+  const stickerMap = {
+    heart: { symbol: "♥", color: "#f37b62" },
+    star: { symbol: "★", color: "#f8c84e" },
+    paw: { symbol: "●", color: "#2f9f95" },
+    crown: { symbol: "♛", color: "#f8c84e" },
+    party: { symbol: "▲", color: "#4f8fcf" },
+    sparkle: { symbol: "✦", color: "#f37b62" }
+  };
+  const item = stickerMap[type] || stickerMap.heart;
+  const index = state.stickers.length;
+  state.stickers.push({
+    ...item,
+    x: canvas.width * (.18 + (index % 4) * .2),
+    y: canvas.height * (.18 + (Math.floor(index / 4) % 3) * .22),
+    size: type === "paw" ? 54 : 70,
+    rotation: (index % 2 ? 1 : -1) * .14
+  });
+  draw();
+}
+
+async function copyAppLink() {
+  try {
+    await navigator.clipboard?.writeText(window.location.href);
+    setDetectorStatus("App link copied.", "success");
+  } catch (error) {
+    setDetectorStatus("Share this link: " + window.location.href, "success");
+  }
+}
+
 function canvasPoint(event) {
   const rect = canvas.getBoundingClientRect();
   return {
@@ -925,9 +1196,19 @@ function hitTarget(point) {
 }
 
 canvas.addEventListener("pointerdown", (event) => {
-  if (!state.image || !state.lastBubble) return;
+  if (!state.image) return;
   const point = canvasPoint(event);
   event.preventDefault();
+  if (state.doodleMode && !state.viewOriginal) {
+    activeStroke = {
+      color: doodleColor.value,
+      size: Number(doodleSize.value),
+      points: [point]
+    };
+    canvas.setPointerCapture(event.pointerId);
+    return;
+  }
+  if (!state.lastBubble) return;
   activateManualPlacement(point);
   if (hitTarget(point)) {
     dragMode = { type: "target" };
@@ -943,6 +1224,11 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 canvas.addEventListener("pointermove", (event) => {
+  if (activeStroke) {
+    activeStroke.points.push(canvasPoint(event));
+    draw();
+    return;
+  }
   if (!dragMode || !state.manual) return;
   const point = canvasPoint(event);
   if (dragMode.type === "target") {
@@ -956,6 +1242,14 @@ canvas.addEventListener("pointermove", (event) => {
 });
 
 canvas.addEventListener("pointerup", (event) => {
+  if (activeStroke) {
+    activeStroke.points.push(canvasPoint(event));
+    if (activeStroke.points.length > 1) state.strokes.push(activeStroke);
+    activeStroke = null;
+    draw();
+    canvas.releasePointerCapture(event.pointerId);
+    return;
+  }
   if (!dragMode) return;
   dragMode = null;
   canvas.releasePointerCapture(event.pointerId);
@@ -963,6 +1257,7 @@ canvas.addEventListener("pointerup", (event) => {
 
 canvas.addEventListener("pointercancel", () => {
   dragMode = null;
+  activeStroke = null;
 });
 
 function loadFile(file) {
@@ -974,6 +1269,14 @@ function loadFile(file) {
       state.image = image;
       state.detection = null;
       state.warning = "";
+      state.sceneTags = [];
+      state.stickers = [];
+      state.strokes = [];
+      state.viewOriginal = false;
+      state.doodleMode = false;
+      state.manual = null;
+      beforeAfterBtn.textContent = "Original";
+      doodleBtn.classList.remove("active");
       setPhotoVisible(true);
       emptyState.classList.add("hidden");
       nextPhrase();
@@ -991,6 +1294,11 @@ cameraBtn.addEventListener("keydown", (event) => {
     event.preventDefault();
     cameraInput.click();
   }
+});
+
+petNameInput.addEventListener("input", () => {
+  state.petName = petNameInput.value.trim();
+  if (state.image && !state.warning) nextPhrase();
 });
 
 ["dragenter", "dragover"].forEach((type) => {
@@ -1056,6 +1364,45 @@ textRange.addEventListener("input", () => {
 });
 phraseBtn.addEventListener("click", () => nextPhrase());
 shortBtn.addEventListener("click", () => nextPhrase(true));
+document.querySelectorAll("[data-sticker]").forEach((button) => {
+  button.addEventListener("click", () => {
+    if (!state.image) return;
+    state.viewOriginal = false;
+    beforeAfterBtn.textContent = "Original";
+    addSticker(button.dataset.sticker);
+  });
+});
+
+doodleBtn.addEventListener("click", () => {
+  if (!state.image) return;
+  state.viewOriginal = false;
+  state.doodleMode = !state.doodleMode;
+  beforeAfterBtn.textContent = "Original";
+  doodleBtn.classList.toggle("active", state.doodleMode);
+  draw();
+});
+
+undoDoodleBtn.addEventListener("click", () => {
+  state.strokes.pop();
+  draw();
+});
+
+clearDoodleBtn.addEventListener("click", () => {
+  state.strokes = [];
+  draw();
+});
+
+beforeAfterBtn.addEventListener("click", () => {
+  if (!state.image) return;
+  state.viewOriginal = !state.viewOriginal;
+  beforeAfterBtn.textContent = state.viewOriginal ? "Bubble" : "Original";
+  draw();
+});
+
+copyLinkBtn.addEventListener("click", async () => {
+  await copyAppLink();
+});
+
 shuffleAllBtn.addEventListener("click", () => {
   state.pet = pick(["cat", "dog", "either"]);
   state.bubble = pick(["thought", "speech"]);
@@ -1063,8 +1410,10 @@ shuffleAllBtn.addEventListener("click", () => {
   state.position = state.detection ? "auto" : pick(["auto", "top-left", "top-right", "bottom-left", "bottom-right"]);
   state.mood = "random";
   state.manual = null;
+  state.viewOriginal = false;
   moodSelect.value = "random";
   styleSelect.value = state.style;
+  beforeAfterBtn.textContent = "Original";
   document.querySelectorAll("[data-pet]").forEach((item) => item.classList.toggle("active", item.dataset.pet === state.pet));
   document.querySelectorAll("[data-bubble]").forEach((item) => item.classList.toggle("active", item.dataset.bubble === state.bubble));
   document.querySelectorAll("[data-position]").forEach((item) => item.classList.toggle("active", item.dataset.position === state.position));
@@ -1115,8 +1464,7 @@ shareAppBtn.addEventListener("click", async () => {
     if (error.name === "AbortError") return;
   }
 
-  await navigator.clipboard?.writeText(window.location.href);
-  setDetectorStatus("App link copied.", "success");
+  await copyAppLink();
 });
 
 clearBtn.addEventListener("click", () => {
@@ -1126,9 +1474,18 @@ clearBtn.addEventListener("click", () => {
   state.phrase = "";
   state.sceneTags = [];
   state.manual = null;
+  state.phraseOptions = [];
+  state.stickers = [];
+  state.strokes = [];
+  state.viewOriginal = false;
+  state.doodleMode = false;
+  activeStroke = null;
   phraseInput.value = "";
+  renderPhraseChoices([]);
   photoInput.value = "";
   cameraInput.value = "";
+  beforeAfterBtn.textContent = "Original";
+  doodleBtn.classList.remove("active");
   setPhotoVisible(false);
   setDetectorStatus("Ready to spot cats and dogs.");
   emptyState.classList.remove("hidden");
@@ -1202,6 +1559,12 @@ function loadGalleryImage(dataUrl) {
     state.warning = "";
     state.sceneTags = [];
     state.manual = null;
+    state.stickers = [];
+    state.strokes = [];
+    state.viewOriginal = false;
+    state.doodleMode = false;
+    beforeAfterBtn.textContent = "Original";
+    doodleBtn.classList.remove("active");
     setPhotoVisible(true);
     emptyState.classList.add("hidden");
     nextPhrase();

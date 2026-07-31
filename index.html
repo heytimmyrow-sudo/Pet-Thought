@@ -66,6 +66,11 @@
         <p class="detector-status" id="detectorStatus" aria-live="polite">Ready to spot cats and dogs.</p>
 
         <div class="control-block">
+          <label class="label" for="petNameInput">Pet Name</label>
+          <input id="petNameInput" class="text-input" type="text" maxlength="24" placeholder="Optional">
+        </div>
+
+        <div class="control-block">
           <span class="label">Pet</span>
           <div class="segmented" role="group" aria-label="Pet type">
             <button class="active" data-pet="cat" type="button">Cat</button>
@@ -109,12 +114,20 @@
             <option value="morning">Good morning</option>
             <option value="apology">Apology note</option>
             <option value="holiday">Holiday fluff</option>
+            <option value="hungry">Hungry</option>
+            <option value="sleepy">Sleepy</option>
+            <option value="guilty">Guilty</option>
+            <option value="excited">Excited</option>
+            <option value="fancy">Fancy</option>
+            <option value="confused">Confused</option>
+            <option value="boss">Tiny Boss</option>
           </select>
         </div>
 
         <div class="control-block photo-only" id="phraseBlock">
           <span class="label">Phrase</span>
           <textarea id="phraseInput" rows="3" maxlength="110" aria-label="Pet phrase"></textarea>
+          <div class="phrase-choices" id="phraseChoices" aria-label="Phrase choices"></div>
           <div class="button-grid">
             <button class="btn primary" id="phraseBtn" type="button">New Phrase</button>
             <button class="btn" id="shortBtn" type="button">Short</button>
@@ -133,6 +146,29 @@
           </div>
         </div>
 
+        <div class="control-block photo-only">
+          <span class="label">Decorations</span>
+          <div class="sticker-grid" role="group" aria-label="Add decoration">
+            <button data-sticker="heart" type="button" aria-label="Add heart">♥</button>
+            <button data-sticker="star" type="button" aria-label="Add star">★</button>
+            <button data-sticker="paw" type="button" aria-label="Add paw">●</button>
+            <button data-sticker="crown" type="button" aria-label="Add crown">♛</button>
+            <button data-sticker="party" type="button" aria-label="Add party hat">▲</button>
+            <button data-sticker="sparkle" type="button" aria-label="Add sparkle">✦</button>
+          </div>
+        </div>
+
+        <div class="control-block photo-only">
+          <span class="label">Doodle</span>
+          <div class="doodle-tools">
+            <button class="btn" id="doodleBtn" type="button">Draw</button>
+            <input id="doodleColor" type="color" value="#f37b62" aria-label="Doodle color">
+            <input id="doodleSize" type="range" min="3" max="28" value="9" aria-label="Doodle size">
+            <button class="btn" id="undoDoodleBtn" type="button">Undo</button>
+            <button class="btn" id="clearDoodleBtn" type="button">Clear</button>
+          </div>
+        </div>
+
         <div class="control-block sliders">
           <label>
             <span>Bubble Size</span>
@@ -147,6 +183,8 @@
         <div class="actions">
           <button class="btn primary" id="downloadBtn" type="button">Download Image</button>
           <button class="btn" id="clearBtn" type="button">Clear Photo</button>
+          <button class="btn photo-only" id="beforeAfterBtn" type="button">Original</button>
+          <button class="btn" id="copyLinkBtn" type="button">Copy Link</button>
           <button class="btn primary photo-only" id="sharePhotoBtn" type="button">Share Photo</button>
           <button class="btn" id="shareAppBtn" type="button">Share App</button>
         </div>
