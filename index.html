@@ -16,7 +16,7 @@
   <title>Pet Thought Bubbler</title>
   <link rel="icon" type="image/png" href="app-photo.png">
   <link rel="apple-touch-icon" href="app-photo.png">
-  <link rel="stylesheet" href="styles.css?v=26">
+  <link rel="stylesheet" href="styles.css?v=27">
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
 </head>
@@ -150,6 +150,7 @@
           <div class="position-grid" role="group" aria-label="Bubble position">
             <button class="auto active" data-position="auto" type="button" aria-label="Auto align near pet head">Auto</button>
             <button class="manual" data-position="manual" type="button" aria-label="Manual bubble placement">Drag</button>
+            <button class="tail-control" id="tailBtn" type="button" aria-label="Drag the bubble tail toward the pet head">Tail</button>
             <button data-position="top-left" type="button" aria-label="Top left"></button>
             <button data-position="top-right" type="button" aria-label="Top right"></button>
             <button data-position="bottom-left" type="button" aria-label="Bottom left"></button>
@@ -215,7 +216,7 @@
       </div>
     </div>
   </div>
-  <script src="qr-code.js?v=26"></script>
-  <script type="module" src="game.js?v=26"></script>
+  <script src="qr-code.js?v=27"></script>
+  <script type="module" src="game.js?v=27"></script>
 </body>
 </html>

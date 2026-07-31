@@ -37,6 +37,7 @@ const inlineQrUrlText = document.querySelector("#inlineQrUrlText");
 const copyInlineQrLinkBtn = document.querySelector("#copyInlineQrLinkBtn");
 const downloadInlineQrBtn = document.querySelector("#downloadInlineQrBtn");
 const phraseChoices = document.querySelector("#phraseChoices");
+const tailBtn = document.querySelector("#tailBtn");
 const doodleBtn = document.querySelector("#doodleBtn");
 const doodleColor = document.querySelector("#doodleColor");
 const doodleSize = document.querySelector("#doodleSize");
@@ -64,7 +65,8 @@ const state = {
   stickers: [],
   strokes: [],
   viewOriginal: false,
-  doodleMode: false
+  doodleMode: false,
+  tailMode: false
 };
 
 let detectorPromise = null;
@@ -391,6 +393,26 @@ const sharedPacks = {
 };
 
 const scenePhrasePacks = {
+  table: {
+    cat: [
+      "This table is my observation platform.",
+      "I have claimed the table for important cat business.",
+      "The table gives me excellent dramatic height.",
+      "I am conducting serious table research."
+    ],
+    dog: [
+      "This table situation needs my very close supervision.",
+      "I found the table and brought my face.",
+      "The table is high, but my curiosity is higher.",
+      "I am politely monitoring this table scene."
+    ],
+    either: [
+      "This table is now part of my official territory.",
+      "I am near the table because important things happen here.",
+      "The table has been inspected and approved.",
+      "This surface clearly needed a tiny supervisor."
+    ]
+  },
   food: {
     cat: [
       "I am supervising this snack very closely.",
@@ -678,7 +700,7 @@ function buildPhraseOptions(count) {
   const attempts = count * 14;
   for (let index = 0; index < attempts && options.length < count; index++) {
     const phrase = personalizePhrase(buildContextPhrase(mood, false) || (!state.sceneTags.length ? pick(getPhrasePool(state.pet, mood)) : ""));
-    if (!options.includes(phrase)) options.push(phrase);
+    if (phrase && !options.includes(phrase)) options.push(phrase);
   }
   while (options.length < count && state.sceneTags.length) {
     const tag = state.sceneTags[options.length % state.sceneTags.length];
@@ -706,6 +728,7 @@ function fallbackPhrase() {
 
 function sceneFallbackPhrase(tag) {
   const labels = {
+    table: "this table scene",
     food: "the snack situation",
     couch: "this cozy couch scene",
     bed: "this sleepy bed scene",
@@ -730,6 +753,9 @@ function sceneFallbackPhrase(tag) {
 function weightedSceneTags() {
   const tags = [...state.sceneTags];
   const mood = state.mood;
+  if (tags.includes("table")) tags.push("table", "table", "table");
+  if (tags.includes("computer")) tags.push("computer");
+  if (tags.includes("toy")) tags.push("toy");
   if (["food", "hungry"].includes(mood) && tags.includes("food")) tags.push("food", "food");
   if (["nap", "sleepy"].includes(mood) && tags.some((tag) => ["bed", "couch"].includes(tag))) tags.push("bed", "couch");
   if (["chaos", "excited"].includes(mood) && tags.includes("toy")) tags.push("toy", "toy");
@@ -738,6 +764,7 @@ function weightedSceneTags() {
 }
 
 function adaptPhraseForMood(base, mood, tag) {
+  if (state.mood === "random") return base;
   const pet = petLabel();
   const moodOpeners = {
     royalty: [`${pet} has claimed this scene: `, `${pet} officially rules here: `],
@@ -767,6 +794,7 @@ function adaptPhraseForMood(base, mood, tag) {
 
 function shortenContextPhrase(tag, base) {
   const shortByTag = {
+    table: ["Table claimed.", "Surface boss.", "Table thoughts."],
     food: ["Snack scene.", "Treat alert.", "Food thoughts."],
     couch: ["Couch claimed.", "Cozy boss.", "Soft spot."],
     bed: ["Nap zone.", "Blanket mode.", "Sleepy boss."],
@@ -1056,10 +1084,11 @@ function autoBubblePosition(width, height, bubbleWidth, bubbleHeight, margin) {
   const rightSpace = width - target.x;
   const topSpace = target.y;
   const bottomSpace = height - target.y;
-  const preferTop = topSpace > bubbleHeight + 95 || topSpace >= bottomSpace;
+  const preferTop = topSpace > bubbleHeight + 62 || topSpace >= bottomSpace;
   const preferLeft = leftSpace > rightSpace;
-  const x = clamp(preferLeft ? target.x - bubbleWidth - 70 : target.x + 70, margin, width - bubbleWidth - margin);
-  const y = clamp(preferTop ? target.y - bubbleHeight - 70 : target.y + 70, margin, height - bubbleHeight - margin);
+  const offset = 46;
+  const x = clamp(preferLeft ? target.x - bubbleWidth - offset : target.x + offset, margin, width - bubbleWidth - margin);
+  const y = clamp(preferTop ? target.y - bubbleHeight - offset : target.y + offset, margin, height - bubbleHeight - margin);
 
   return {
     x,
@@ -1075,7 +1104,7 @@ function autoBubblePosition(width, height, bubbleWidth, bubbleHeight, margin) {
 
 function headTarget() {
   const box = detectionToCanvasBox(state.detection);
-  const petHeadY = state.bubble === "speech" ? (state.pet === "dog" ? .43 : .38) : (state.pet === "dog" ? .29 : .25);
+  const petHeadY = state.bubble === "speech" ? (state.pet === "dog" ? .36 : .32) : (state.pet === "dog" ? .27 : .24);
   const petHeadX = state.pet === "dog" ? .52 : .5;
   return {
     x: clamp(box.x + box.w * petHeadX, 28, canvas.width - 28),
@@ -1284,6 +1313,13 @@ function downloadInlineQrCode() {
   URL.revokeObjectURL(link.href);
 }
 
+function setTailMode(active) {
+  state.tailMode = active;
+  tailBtn.classList.toggle("active", active);
+  if (active) state.doodleMode = false;
+  doodleBtn.classList.toggle("active", state.doodleMode);
+}
+
 function canvasPoint(event) {
   const rect = canvas.getBoundingClientRect();
   return {
@@ -1338,7 +1374,9 @@ canvas.addEventListener("pointerdown", (event) => {
   }
   if (!state.lastBubble) return;
   activateManualPlacement(point);
-  if (hitTarget(point)) {
+  if (state.tailMode || hitTarget(point)) {
+    state.manual.targetX = clamp(point.x, 12, canvas.width - 12);
+    state.manual.targetY = clamp(point.y, 12, canvas.height - 12);
     dragMode = { type: "target" };
   } else if (hitBubble(point)) {
     dragMode = { type: "bubble", offsetX: point.x - state.manual.x, offsetY: point.y - state.manual.y };
@@ -1403,6 +1441,7 @@ function loadFile(file) {
       state.viewOriginal = false;
       state.doodleMode = false;
       state.manual = null;
+      setTailMode(false);
       beforeAfterBtn.textContent = "Original";
       doodleBtn.classList.remove("active");
       setPhotoVisible(true);
@@ -1467,11 +1506,19 @@ styleSelect.addEventListener("change", () => {
 
 document.querySelectorAll("[data-position]").forEach((button) => {
   button.addEventListener("click", () => {
+    setTailMode(false);
     state.position = button.dataset.position;
     if (state.position !== "manual") state.manual = null;
     document.querySelectorAll("[data-position]").forEach((item) => item.classList.toggle("active", item === button));
     draw();
   });
+});
+
+tailBtn.addEventListener("click", () => {
+  if (!state.image || !state.lastBubble) return;
+  activateManualPlacement();
+  setTailMode(!state.tailMode);
+  draw();
 });
 
 moodSelect.addEventListener("change", () => {
@@ -1504,6 +1551,7 @@ document.querySelectorAll("[data-sticker]").forEach((button) => {
 doodleBtn.addEventListener("click", () => {
   if (!state.image) return;
   state.viewOriginal = false;
+  setTailMode(false);
   state.doodleMode = !state.doodleMode;
   beforeAfterBtn.textContent = "Original";
   doodleBtn.classList.toggle("active", state.doodleMode);
@@ -1522,6 +1570,7 @@ clearDoodleBtn.addEventListener("click", () => {
 
 beforeAfterBtn.addEventListener("click", () => {
   if (!state.image) return;
+  setTailMode(false);
   state.viewOriginal = !state.viewOriginal;
   beforeAfterBtn.textContent = state.viewOriginal ? "Bubble" : "Original";
   draw();
@@ -1570,6 +1619,7 @@ shuffleAllBtn.addEventListener("click", () => {
   state.position = state.detection ? "auto" : pick(["auto", "top-left", "top-right", "bottom-left", "bottom-right"]);
   state.mood = "random";
   state.manual = null;
+  setTailMode(false);
   state.viewOriginal = false;
   moodSelect.value = "random";
   styleSelect.value = state.style;
@@ -1639,6 +1689,7 @@ clearBtn.addEventListener("click", () => {
   state.strokes = [];
   state.viewOriginal = false;
   state.doodleMode = false;
+  setTailMode(false);
   activeStroke = null;
   phraseInput.value = "";
   renderPhraseChoices([]);
@@ -1724,6 +1775,7 @@ function loadGalleryImage(dataUrl) {
     state.strokes = [];
     state.viewOriginal = false;
     state.doodleMode = false;
+    setTailMode(false);
     beforeAfterBtn.textContent = "Original";
     doodleBtn.classList.remove("active");
     setPhotoVisible(true);
@@ -1789,7 +1841,8 @@ function sceneTagsFromPredictions(predictions, pet) {
   const strongObjects = predictions.filter((item) => item.score >= .38 && item !== pet);
   const classNames = strongObjects.map((item) => item.class);
 
-  addTagForAny(tagSet, classNames, "food", ["banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "bowl", "cup", "wine glass", "fork", "knife", "spoon", "dining table"]);
+  addTagForAny(tagSet, classNames, "table", ["dining table"]);
+  addTagForAny(tagSet, classNames, "food", ["banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "bowl", "cup", "wine glass", "fork", "knife", "spoon"]);
   addTagForAny(tagSet, classNames, "couch", ["couch", "chair"]);
   addTagForAny(tagSet, classNames, "bed", ["bed"]);
   addTagForAny(tagSet, classNames, "person", ["person"]);

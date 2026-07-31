@@ -4,20 +4,20 @@
     "totalBytes": 8388608
   },
   "totals": {
-    "bytes": 221273,
-    "gzipBytes": 80031
+    "bytes": 223397,
+    "gzipBytes": 80455
   },
   "withinBudget": true,
   "files": [
     {
       "path": "index.html",
-      "bytes": 11092,
-      "gzipBytes": 2728
+      "bytes": 11228,
+      "gzipBytes": 2765
     },
     {
       "path": "styles.css",
-      "bytes": 15503,
-      "gzipBytes": 3765
+      "bytes": 15594,
+      "gzipBytes": 3773
     },
     {
       "path": "qr-code.js",
@@ -26,8 +26,8 @@
     },
     {
       "path": "game.js",
-      "bytes": 61567,
-      "gzipBytes": 17239
+      "bytes": 63464,
+      "gzipBytes": 17618
     },
     {
       "path": "app-photo.png",
