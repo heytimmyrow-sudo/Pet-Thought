@@ -160,6 +160,18 @@ canvas {
   font-size: clamp(19px, 3vw, 26px);
   font-weight: 850;
 }
+.empty-steps {
+  width: min(460px, 100%);
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+  color: var(--soft-ink);
+  font-size: clamp(15px, 2.2vw, 18px);
+  font-weight: 750;
+  line-height: 1.32;
+  text-align: left;
+}
 .empty-actions {
   display: flex;
   flex-wrap: wrap;
@@ -188,62 +200,6 @@ canvas {
 .empty-camera {
   background: linear-gradient(180deg, #5a9edb, #3f85c8);
   box-shadow: inset 0 -3px rgba(21, 76, 129, .32), var(--shadow-soft);
-}
-.empty-mark {
-  position: relative;
-  width: 164px;
-  height: 126px;
-  border: 4px solid #2d2728;
-  border-radius: 8px;
-  background:
-    radial-gradient(circle at 54px 58px, #2d2728 0 7px, transparent 8px),
-    radial-gradient(circle at 108px 58px, #2d2728 0 7px, transparent 8px),
-    radial-gradient(circle at 81px 77px, #f37b62 0 9px, transparent 10px),
-    linear-gradient(180deg, #fff 0 62%, #f8c84e 62% 100%);
-  box-shadow: var(--shadow-soft);
-}
-.empty-mark span,
-.empty-mark i {
-  position: absolute;
-  top: 18px;
-  width: 44px;
-  height: 44px;
-  border: 4px solid #2d2728;
-  background: #fff;
-}
-.empty-mark span {
-  left: 18px;
-  transform: rotate(35deg);
-  border-radius: 12px 30px 12px 12px;
-}
-.empty-mark i {
-  right: 18px;
-  transform: rotate(-35deg);
-  border-radius: 30px 12px 12px 12px;
-}
-.empty-mark::before,
-.empty-mark::after {
-  content: "";
-  position: absolute;
-}
-.empty-mark::before {
-  right: -18px;
-  top: -20px;
-  width: 72px;
-  height: 42px;
-  border: 3px solid #2d2728;
-  border-radius: 30px;
-  background: #fff;
-}
-.empty-mark::after {
-  right: 24px;
-  top: 18px;
-  width: 16px;
-  height: 16px;
-  border-right: 3px solid #2d2728;
-  border-bottom: 3px solid #2d2728;
-  background: #fff;
-  transform: rotate(34deg);
 }
 
 .gallery {

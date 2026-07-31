@@ -16,7 +16,7 @@
   <title>Pet Thought Bubbler</title>
   <link rel="icon" type="image/png" href="app-photo.png">
   <link rel="apple-touch-icon" href="app-photo.png">
-  <link rel="stylesheet" href="styles.css?v=34">
+  <link rel="stylesheet" href="styles.css?v=35">
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
 </head>
@@ -35,11 +35,12 @@
         <div class="canvas-wrap" id="dropZone">
           <canvas id="petCanvas" width="1200" height="900" aria-label="Pet photo with caption bubble"></canvas>
           <div class="empty-state" id="emptyState">
-            <div class="empty-mark" aria-hidden="true">
-              <span></span>
-              <i></i>
-            </div>
-            <p>Start with a cat or dog photo.</p>
+            <p>How to make your pet thought picture</p>
+            <ol class="empty-steps">
+              <li>Choose a cat or dog photo, or take a new picture.</li>
+              <li>The app adds a silly bubble automatically.</li>
+              <li>Change the phrase, doodle, share, or download it.</li>
+            </ol>
             <div class="empty-actions">
               <label class="empty-photo" id="choosePhotoBtn" for="photoInput" role="button" tabindex="0" aria-label="Choose photo">Choose Photo</label>
               <label class="empty-camera" id="cameraBtn" for="cameraInput" role="button" tabindex="0" aria-label="Open camera">Take Picture</label>
@@ -215,7 +216,7 @@
       </div>
     </div>
   </div>
-  <script src="qr-code.js?v=34"></script>
-  <script type="module" src="game.js?v=34"></script>
+  <script src="qr-code.js?v=35"></script>
+  <script type="module" src="game.js?v=35"></script>
 </body>
 </html>

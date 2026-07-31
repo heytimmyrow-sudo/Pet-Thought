@@ -4,20 +4,20 @@
     "totalBytes": 8388608
   },
   "totals": {
-    "bytes": 245978,
-    "gzipBytes": 85536
+    "bytes": 245116,
+    "gzipBytes": 85434
   },
   "withinBudget": true,
   "files": [
     {
       "path": "index.html",
-      "bytes": 11478,
-      "gzipBytes": 2780
+      "bytes": 11626,
+      "gzipBytes": 2846
     },
     {
       "path": "styles.css",
-      "bytes": 16470,
-      "gzipBytes": 3905
+      "bytes": 15460,
+      "gzipBytes": 3737
     },
     {
       "path": "qr-code.js",
