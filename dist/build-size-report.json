@@ -4,15 +4,15 @@
     "totalBytes": 8388608
   },
   "totals": {
-    "bytes": 155690,
-    "gzipBytes": 66346
+    "bytes": 155700,
+    "gzipBytes": 66353
   },
   "withinBudget": true,
   "files": [
     {
       "path": "index.html",
-      "bytes": 9719,
-      "gzipBytes": 2415
+      "bytes": 9729,
+      "gzipBytes": 2422
     },
     {
       "path": "styles.css",
