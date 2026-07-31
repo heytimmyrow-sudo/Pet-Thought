@@ -714,7 +714,7 @@ function adaptPhraseForMood(base, mood, tag) {
   if (mood === "chaos" && tag !== "toy") return pick([`${base} Now let's make it slightly weird.`, "I am helping this scene become more exciting.", `${pet} has chaotic notes about this photo.`]);
   const openers = moodOpeners[mood];
   if (!openers) return base;
-  const phrase = `${pick(openers)}${base.charAt(0).toLowerCase()}${base.slice(1)}`;
+  const phrase = `${pick(openers)}${base}`;
   return phrase.length <= 110 ? phrase : base;
 }
 
