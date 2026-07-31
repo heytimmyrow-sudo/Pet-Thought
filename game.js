@@ -429,7 +429,7 @@ const scenePhrasePacks = {
     either: [
       "The snacks in this photo are important.",
       "I have noticed the edible situation.",
-      "This scene requires treat analysis.",
+      "This food scene requires treat analysis.",
       "A crumb would complete the composition."
     ]
   },
@@ -457,7 +457,7 @@ const scenePhrasePacks = {
     cat: [
       "This bed is doing a fine job worshipping me.",
       "I am testing the blanket for softness.",
-      "Wake me when admiration resumes.",
+      "Wake me when bed admiration resumes.",
       "This pillow is under new management."
     ],
     dog: [
@@ -477,19 +477,19 @@ const scenePhrasePacks = {
     cat: [
       "My human assistant is nearby.",
       "I am allowing this person to admire me.",
-      "This lap-adjacent situation has promise.",
+      "This person-adjacent lap situation has promise.",
       "The human seems trainable."
     ],
     dog: [
       "My favorite person is in the photo!",
       "I am close to my human on purpose.",
       "This person is part of my pack.",
-      "I saved this happy face for them."
+      "I saved this happy face for my person."
     ],
     either: [
       "My human is here, so everything is better.",
       "This photo includes my favorite staff member.",
-      "I am posing near someone important.",
+      "I am posing near an important human.",
       "The human adds useful warmth."
     ]
   },
@@ -498,7 +498,7 @@ const scenePhrasePacks = {
       "Your keyboard clearly needed my expertise.",
       "I am helping by blocking the screen.",
       "This work thing belongs to me now.",
-      "I typed one mysterious email."
+      "I typed one mysterious computer email."
     ],
     dog: [
       "I am assisting with important computer work.",
@@ -542,7 +542,7 @@ const scenePhrasePacks = {
     ],
     dog: [
       "Outside smells are doing amazing work.",
-      "I found seventeen invisible stories.",
+      "I found seventeen outdoor smell stories.",
       "Adventure is happening right here.",
       "The yard and I are having a great day."
     ],
@@ -564,12 +564,12 @@ const scenePhrasePacks = {
       "Car ride? I am emotionally prepared.",
       "Window smells are calling me.",
       "This vehicle may lead to adventure.",
-      "I packed my face and enthusiasm."
+      "I packed my face and enthusiasm for this ride."
     ],
     either: [
       "Travel has been detected.",
       "This ride needs one small captain.",
-      "I am ready, suspicious, or both.",
+      "I am ready for this vehicle, suspicious, or both.",
       "The journey could use snacks."
     ]
   },
@@ -584,12 +584,12 @@ const scenePhrasePacks = {
       "This plant smells like outside practice.",
       "I found a leafy friend.",
       "The garden report is mostly sniffing.",
-      "Nature is doing a good job."
+      "This plant is doing a good nature job."
     ],
     either: [
       "The plant is part of my investigation.",
       "Green things have been noticed.",
-      "I am adding charm to the scenery.",
+      "I am adding charm to the plant scenery.",
       "This leaf situation seems official."
     ]
   },
@@ -624,7 +624,7 @@ const scenePhrasePacks = {
       "Bath rumors are making me nervous.",
       "I was brave in the splash room.",
       "This bathroom needs more treats.",
-      "I am damp in my imagination."
+      "I am damp in my bathroom imagination."
     ],
     either: [
       "Water-related activities are under review.",
