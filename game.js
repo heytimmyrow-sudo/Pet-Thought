@@ -37,7 +37,8 @@ const state = {
   imageFit: null,
   warning: "",
   manual: null,
-  lastBubble: null
+  lastBubble: null,
+  sceneTags: []
 };
 
 let detectorPromise = null;
@@ -291,6 +292,249 @@ const sharedPacks = {
   ]
 };
 
+const scenePhrasePacks = {
+  food: {
+    cat: [
+      "I am supervising this snack very closely.",
+      "That food is within my emotional range.",
+      "I was invited by the smell.",
+      "The plate and I have unfinished business."
+    ],
+    dog: [
+      "I am standing by for dropped snacks.",
+      "Food detected. Tail system online.",
+      "I can help with that bite.",
+      "This meal has excellent sharing potential."
+    ],
+    either: [
+      "The snacks in this photo are important.",
+      "I have noticed the edible situation.",
+      "This scene requires treat analysis.",
+      "A crumb would complete the composition."
+    ]
+  },
+  couch: {
+    cat: [
+      "This couch is now my soft kingdom.",
+      "I have claimed this cushion legally.",
+      "The couch understands my greatness.",
+      "I am improving the furniture."
+    ],
+    dog: [
+      "This couch is better because I am on it.",
+      "I brought cozy energy to this cushion.",
+      "Please do not move. Couch meeting.",
+      "This is my official relaxation station."
+    ],
+    either: [
+      "Cozy furniture has been conquered.",
+      "This soft spot passed inspection.",
+      "I am exactly where comfort happens.",
+      "The cushion situation is excellent."
+    ]
+  },
+  bed: {
+    cat: [
+      "This bed is doing a fine job worshipping me.",
+      "I am testing the blanket for softness.",
+      "Wake me when admiration resumes.",
+      "This pillow is under new management."
+    ],
+    dog: [
+      "I saved you a very tiny edge of bed.",
+      "The bed and I are best friends now.",
+      "I am guarding the blankets from loneliness.",
+      "This nap zone has my full approval."
+    ],
+    either: [
+      "The blanket has accepted me.",
+      "This bed is a certified cozy zone.",
+      "I have melted into the softness.",
+      "Current activity: professional resting."
+    ]
+  },
+  person: {
+    cat: [
+      "My human assistant is nearby.",
+      "I am allowing this person to admire me.",
+      "This lap-adjacent situation has promise.",
+      "The human seems trainable."
+    ],
+    dog: [
+      "My favorite person is in the photo!",
+      "I am close to my human on purpose.",
+      "This person is part of my pack.",
+      "I saved this happy face for them."
+    ],
+    either: [
+      "My human is here, so everything is better.",
+      "This photo includes my favorite staff member.",
+      "I am posing near someone important.",
+      "The human adds useful warmth."
+    ]
+  },
+  computer: {
+    cat: [
+      "Your keyboard clearly needed my expertise.",
+      "I am helping by blocking the screen.",
+      "This work thing belongs to me now.",
+      "I typed one mysterious email."
+    ],
+    dog: [
+      "I am assisting with important computer work.",
+      "Your meeting needed more tail energy.",
+      "I can explain the spreadsheet with my face.",
+      "This laptop smells like less walk."
+    ],
+    either: [
+      "I am the productivity manager now.",
+      "This screen has not petted me once.",
+      "Work can wait. I am happening.",
+      "I have reviewed the computer situation."
+    ]
+  },
+  toy: {
+    cat: [
+      "This toy has been selected for judgment.",
+      "I attacked it with quiet professionalism.",
+      "The tiny object fears me.",
+      "I am pretending not to love this toy."
+    ],
+    dog: [
+      "That toy is my whole personality today.",
+      "Please throw it again immediately.",
+      "Toy secured. Joy increased.",
+      "I brought this treasure for the team."
+    ],
+    either: [
+      "This object is clearly important.",
+      "Playtime has entered the evidence.",
+      "I found a thing and made it special.",
+      "The toy situation is developing."
+    ]
+  },
+  outside: {
+    cat: [
+      "The outdoors is loud, but I am majestic.",
+      "I am inspecting nature from a safe attitude.",
+      "A leaf moved suspiciously.",
+      "The garden has been notified."
+    ],
+    dog: [
+      "Outside smells are doing amazing work.",
+      "I found seventeen invisible stories.",
+      "Adventure is happening right here.",
+      "The yard and I are having a great day."
+    ],
+    either: [
+      "Nature has many excellent smells.",
+      "This outdoor scene needed more cuteness.",
+      "Fresh air, fresh thoughts.",
+      "I am conducting field research."
+    ]
+  },
+  vehicle: {
+    cat: [
+      "The moving box is not my favorite.",
+      "I have concerns about this travel plan.",
+      "This vehicle should contain more blankets.",
+      "I am bravely near transportation."
+    ],
+    dog: [
+      "Car ride? I am emotionally prepared.",
+      "Window smells are calling me.",
+      "This vehicle may lead to adventure.",
+      "I packed my face and enthusiasm."
+    ],
+    either: [
+      "Travel has been detected.",
+      "This ride needs one small captain.",
+      "I am ready, suspicious, or both.",
+      "The journey could use snacks."
+    ]
+  },
+  plant: {
+    cat: [
+      "The plant and I have a complicated history.",
+      "This leaf looked at me first.",
+      "I am botanically curious.",
+      "The greenery has been inspected."
+    ],
+    dog: [
+      "This plant smells like outside practice.",
+      "I found a leafy friend.",
+      "The garden report is mostly sniffing.",
+      "Nature is doing a good job."
+    ],
+    either: [
+      "The plant is part of my investigation.",
+      "Green things have been noticed.",
+      "I am adding charm to the scenery.",
+      "This leaf situation seems official."
+    ]
+  },
+  bag: {
+    cat: [
+      "If I fits, this bag is mine.",
+      "This container has excellent potential.",
+      "I am luggage now.",
+      "The bag invited me emotionally."
+    ],
+    dog: [
+      "Is this bag packed for snacks?",
+      "I can help carry enthusiasm.",
+      "This bag smells like going somewhere.",
+      "I am ready for the adventure supplies."
+    ],
+    either: [
+      "This bag has been thoroughly considered.",
+      "Travel supplies detected.",
+      "I found a portable mystery.",
+      "The bag situation requires supervision."
+    ]
+  },
+  bathroom: {
+    cat: [
+      "This room contains suspicious water.",
+      "I do not support bath-related decisions.",
+      "The sink has my attention.",
+      "I am monitoring the wet zone."
+    ],
+    dog: [
+      "Bath rumors are making me nervous.",
+      "I was brave in the splash room.",
+      "This bathroom needs more treats.",
+      "I am damp in my imagination."
+    ],
+    either: [
+      "Water-related activities are under review.",
+      "This room has suspicious plumbing.",
+      "I am asking questions about the sink.",
+      "The bath vibes have been detected."
+    ]
+  },
+  closeup: {
+    cat: [
+      "My face is the whole announcement.",
+      "Please admire this premium close-up.",
+      "I brought my tiny nose to the foreground.",
+      "This is my serious portrait face."
+    ],
+    dog: [
+      "My face is very close because I love you.",
+      "This nose has entered the chat.",
+      "I am delivering maximum puppy energy.",
+      "Please enjoy this important face."
+    ],
+    either: [
+      "Extreme cuteness has filled the frame.",
+      "This close-up is my official statement.",
+      "I moved closer for emotional impact.",
+      "The camera has been blessed by my face."
+    ]
+  }
+};
+
 function allMoodKeys() {
   return ["food", "royalty", "chaos", "nap", "dramatic", "compliment", "birthday", "morning", "apology", "holiday"];
 }
@@ -309,9 +553,7 @@ function nextPhrase(short = false) {
   if (short) {
     state.phrase = pick(shortPhrases);
   } else {
-    const pet = state.pet;
-    const mood = state.mood === "random" ? pick(allMoodKeys()) : state.mood;
-    state.phrase = pick(getPhrasePool(pet, mood));
+    state.phrase = contextualPhrase() || pick(getPhrasePool(state.pet, state.mood === "random" ? pick(allMoodKeys()) : state.mood));
   }
   phraseInput.value = state.phrase;
   draw();
@@ -319,6 +561,14 @@ function nextPhrase(short = false) {
 
 function getPhrasePool(pet, mood) {
   return phrases[pet]?.[mood] || sharedPacks[mood] || phrases.either.compliment;
+}
+
+function contextualPhrase() {
+  if (!state.sceneTags.length) return "";
+  const tag = pick(state.sceneTags);
+  const pack = scenePhrasePacks[tag];
+  if (!pack) return "";
+  return pick([...(pack[state.pet] || []), ...(pack.either || [])]);
 }
 
 function draw() {
@@ -874,6 +1124,7 @@ clearBtn.addEventListener("click", () => {
   state.detection = null;
   state.warning = "";
   state.phrase = "";
+  state.sceneTags = [];
   state.manual = null;
   phraseInput.value = "";
   photoInput.value = "";
@@ -949,6 +1200,7 @@ function loadGalleryImage(dataUrl) {
     state.image = image;
     state.detection = null;
     state.warning = "";
+    state.sceneTags = [];
     state.manual = null;
     setPhotoVisible(true);
     emptyState.classList.add("hidden");
@@ -975,9 +1227,11 @@ async function identifyPet(image) {
       const pet = pets.sort((a, b) => scoreDetection(b) - scoreDetection(a))[0];
       state.pet = pet.class;
       state.detection = pet;
+      state.sceneTags = sceneTagsFromPredictions(predictions, pet);
       state.warning = "";
       setActivePet(pet.class);
-      setDetectorStatus(`Looks like a ${pet.class}. Bubble aligned near the head.`, "success");
+      const sceneNote = state.sceneTags.length ? ` Scene clues: ${state.sceneTags.slice(0, 3).join(", ")}.` : "";
+      setDetectorStatus(`Looks like a ${pet.class}. Bubble aligned near the head.${sceneNote}`, "success");
       nextPhrase();
       return;
     }
@@ -985,6 +1239,7 @@ async function identifyPet(image) {
     if (people.length) {
       state.pet = "either";
       state.detection = null;
+      state.sceneTags = [];
       state.warning = "That's not a pet. Try a cat or dog photo.";
       setActivePet("either");
       setDetectorStatus("That's not a pet. Try a cat or dog photo.", "warning");
@@ -993,14 +1248,46 @@ async function identifyPet(image) {
     }
 
     state.detection = null;
+    state.sceneTags = [];
     state.warning = "I can't find a cat or dog yet. Try a clearer pet photo.";
     setDetectorStatus("I can't find a cat or dog yet. Try a clearer pet photo.", "warning");
     nextPhrase();
   } catch (error) {
     state.detection = null;
+    state.sceneTags = [];
     setDetectorStatus("Pet spotting is unavailable right now, but you can still make bubbles manually.", "warning");
     draw();
   }
+}
+
+function sceneTagsFromPredictions(predictions, pet) {
+  const tagSet = new Set();
+  const strongObjects = predictions.filter((item) => item.score >= .38 && item !== pet);
+  const classNames = strongObjects.map((item) => item.class);
+
+  addTagForAny(tagSet, classNames, "food", ["banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "bowl", "cup", "wine glass", "fork", "knife", "spoon", "dining table"]);
+  addTagForAny(tagSet, classNames, "couch", ["couch", "chair"]);
+  addTagForAny(tagSet, classNames, "bed", ["bed"]);
+  addTagForAny(tagSet, classNames, "person", ["person"]);
+  addTagForAny(tagSet, classNames, "computer", ["laptop", "keyboard", "mouse", "cell phone", "tv", "remote"]);
+  addTagForAny(tagSet, classNames, "toy", ["sports ball", "frisbee", "teddy bear", "baseball bat", "baseball glove", "skateboard"]);
+  addTagForAny(tagSet, classNames, "outside", ["bird", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "bench", "umbrella", "skis", "snowboard", "kite", "surfboard", "tennis racket"]);
+  addTagForAny(tagSet, classNames, "vehicle", ["bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat"]);
+  addTagForAny(tagSet, classNames, "plant", ["potted plant"]);
+  addTagForAny(tagSet, classNames, "bag", ["backpack", "handbag", "suitcase"]);
+  addTagForAny(tagSet, classNames, "bathroom", ["toilet", "sink", "toothbrush", "hair drier"]);
+
+  if (pet?.bbox && state.image) {
+    const petArea = pet.bbox[2] * pet.bbox[3];
+    const imageArea = state.image.naturalWidth * state.image.naturalHeight;
+    if (petArea / imageArea > .42) tagSet.add("closeup");
+  }
+
+  return [...tagSet];
+}
+
+function addTagForAny(tagSet, classNames, tag, matches) {
+  if (matches.some((item) => classNames.includes(item))) tagSet.add(tag);
 }
 
 function loadDetector() {
