@@ -66,7 +66,8 @@ const state = {
   strokes: [],
   viewOriginal: false,
   doodleMode: false,
-  tailMode: false
+  tailMode: false,
+  suppressEditHandles: false
 };
 
 let detectorPromise = null;
@@ -1121,6 +1122,53 @@ function drawBubble(width, height) {
   lines.forEach((line, index) => {
     ctx.fillText(line, pos.x + bubbleWidth / 2, firstY + index * lineHeight);
   });
+
+  if (shouldDrawEditHandles()) drawEditHandles(pos);
+}
+
+function shouldDrawEditHandles() {
+  return state.image && !state.viewOriginal && !state.suppressEditHandles && !state.doodleMode && (dragMode || state.tailMode || state.position === "manual");
+}
+
+function drawEditHandles(pos) {
+  ctx.save();
+  ctx.setLineDash([16, 12]);
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = "rgba(47, 159, 149, .92)";
+  ctx.shadowColor = "rgba(255, 255, 255, .9)";
+  ctx.shadowBlur = 8;
+  roundedRect(pos.x - 10, pos.y - 10, pos.width + 20, pos.height + 20, 28);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const corners = [
+    { x: pos.x, y: pos.y },
+    { x: pos.x + pos.width, y: pos.y },
+    { x: pos.x, y: pos.y + pos.height },
+    { x: pos.x + pos.width, y: pos.y + pos.height }
+  ];
+  corners.forEach((corner) => drawEditHandle(corner.x, corner.y, "#ffffff", "#2f9f95", 17));
+
+  if (pos.targetX !== undefined) {
+    ctx.beginPath();
+    ctx.moveTo(pos.anchorX, pos.anchorY);
+    ctx.lineTo(pos.targetX, pos.targetY);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(47, 159, 149, .62)";
+    ctx.stroke();
+    drawEditHandle(pos.targetX, pos.targetY, "#f8c84e", "#2d2728", 20);
+  }
+  ctx.restore();
+}
+
+function drawEditHandle(x, y, fill, stroke, radius) {
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 5;
+  ctx.fill();
+  ctx.stroke();
 }
 
 function drawStickers() {
@@ -1873,11 +1921,27 @@ function downloadImage() {
 }
 
 function canvasBlob() {
-  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  return withCleanCanvas(() => new Promise((resolve) => canvas.toBlob(resolve, "image/png")));
 }
 
 function currentImageDataUrl() {
-  return canvas.toDataURL("image/png");
+  return withCleanCanvas(() => canvas.toDataURL("image/png"));
+}
+
+function withCleanCanvas(callback) {
+  const wasSuppressed = state.suppressEditHandles;
+  state.suppressEditHandles = true;
+  draw();
+  const result = callback();
+  if (result?.then) {
+    return result.finally(() => {
+      state.suppressEditHandles = wasSuppressed;
+      draw();
+    });
+  }
+  state.suppressEditHandles = wasSuppressed;
+  draw();
+  return result;
 }
 
 function loadGallery() {
