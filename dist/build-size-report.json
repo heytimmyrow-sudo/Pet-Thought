@@ -1,0 +1,28 @@
+{
+  "limits": {
+    "initialBytes": 5242880,
+    "totalBytes": 8388608
+  },
+  "totals": {
+    "bytes": 28466,
+    "gzipBytes": 8890
+  },
+  "withinBudget": true,
+  "files": [
+    {
+      "path": "index.html",
+      "bytes": 4572,
+      "gzipBytes": 1325
+    },
+    {
+      "path": "styles.css",
+      "bytes": 7560,
+      "gzipBytes": 2262
+    },
+    {
+      "path": "game.js",
+      "bytes": 16334,
+      "gzipBytes": 5303
+    }
+  ]
+}

@@ -1,103 +1,111 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#101825">
-  <title>Magnet Mayhem Delivery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f8c84e">
+  <meta name="description" content="Upload a cat or dog photo and add a silly little pet thought or speech bubble.">
+  <title>Pet Thought Bubbler</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main id="app">
-    <section id="titleScreen" class="screen title-screen">
-      <div class="title-art" aria-hidden="true">
-        <span class="coil red"></span>
-        <span class="bot-face">M</span>
-        <span class="coil blue"></span>
-      </div>
-      <p class="eyebrow">Arcade-puzzle factory runs</p>
-      <h1>Magnet Mayhem Delivery</h1>
-      <p class="lede">Flip the room's polarity, herd a fragile metal package, and reach the delivery chute before the factory gets too spicy.</p>
-      <div class="button-row">
-        <button class="btn primary" id="playBtn" type="button">Play</button>
-        <button class="btn" id="levelSelectBtn" type="button">Levels</button>
-        <button class="btn" id="packsBtn" type="button">Expansion Packs</button>
-        <button class="btn icon" id="fullscreenBtn" type="button" aria-label="Toggle fullscreen">[]</button>
-      </div>
-      <div class="button-row slim">
-        <button class="link" id="settingsOpenBtn" type="button">Settings</button>
-        <button class="link" id="exportBtn" type="button">Export Save</button>
-        <label class="link file-label">Import Save<input id="importInput" type="file" accept="application/json"></label>
-      </div>
-    </section>
+  <main class="app">
+    <section class="studio" aria-labelledby="appTitle">
+      <div class="workspace">
+        <div class="brand-row">
+          <div>
+            <p class="eyebrow">Pet Thought Bubbler</p>
+            <h1 id="appTitle">What is this tiny roommate thinking?</h1>
+          </div>
+          <button class="icon-button" id="shuffleAllBtn" type="button" aria-label="Surprise me" title="Surprise me">?</button>
+        </div>
 
-    <section id="menuScreen" class="screen menu-screen hidden">
-      <div class="menu-head">
-        <button class="btn icon" data-screen="titleScreen" type="button" aria-label="Back">&lt;</button>
-        <div>
-          <p class="eyebrow">Base Game</p>
-          <h2>Level Select</h2>
+        <div class="canvas-wrap">
+          <canvas id="petCanvas" width="1200" height="900" aria-label="Pet photo with caption bubble"></canvas>
+          <div class="empty-state" id="emptyState">
+            <div class="empty-mark" aria-hidden="true">
+              <span></span>
+              <i></i>
+            </div>
+            <p>Drop in a cat or dog photo.</p>
+          </div>
         </div>
       </div>
-      <div id="levelGrid" class="level-grid"></div>
-    </section>
 
-    <section id="packsScreen" class="screen menu-screen hidden">
-      <div class="menu-head">
-        <button class="btn icon" data-screen="titleScreen" type="button" aria-label="Back">&lt;</button>
-        <div>
-          <p class="eyebrow">Update-safe content</p>
-          <h2>Expansion Packs</h2>
+      <aside class="controls" aria-label="Pet bubble controls">
+        <label class="upload-zone" id="dropZone">
+          <input id="photoInput" type="file" accept="image/*">
+          <span>Choose Photo</span>
+          <small>JPG, PNG, GIF, or a fresh camera shot</small>
+        </label>
+
+        <div class="control-block">
+          <span class="label">Pet</span>
+          <div class="segmented" role="group" aria-label="Pet type">
+            <button class="active" data-pet="cat" type="button">Cat</button>
+            <button data-pet="dog" type="button">Dog</button>
+            <button data-pet="either" type="button">Mystery</button>
+          </div>
         </div>
-      </div>
-      <div id="packGrid" class="pack-grid"></div>
-    </section>
 
-    <section id="gameScreen" class="game-screen hidden">
-      <header class="hud">
-        <div><b id="hudLevel">Level 1</b><span id="hudPack">Base Game</span></div>
-        <div class="meter"><span>Time</span><b id="timer">0.0</b></div>
-        <div class="durability" aria-label="Package durability"><i></i><i></i><i></i></div>
-        <div class="polarity" id="polarityBadge">NORTH</div>
-        <button class="hud-btn hidden" id="skipTutorialBtn" type="button">Skip</button>
-        <button class="hud-btn" id="restartBtn" type="button">R</button>
-        <button class="hud-btn" id="pauseBtn" type="button">II</button>
-      </header>
-      <canvas id="gameCanvas" width="960" height="540" aria-label="Magnet Mayhem Delivery game canvas"></canvas>
-      <nav class="touch-controls" aria-label="Mobile controls">
-        <button data-touch="left" type="button">&lt;</button>
-        <button data-touch="right" type="button">&gt;</button>
-        <button data-touch="jump" type="button">^</button>
-        <button data-touch="pickup" type="button">E</button>
-        <button data-touch="flip" type="button">F</button>
-        <button data-touch="restart" type="button">R</button>
-      </nav>
-    </section>
-
-    <div id="overlay" class="overlay hidden" role="dialog" aria-modal="true">
-      <div class="modal">
-        <h2 id="overlayTitle">Paused</h2>
-        <p id="overlayText"></p>
-        <div id="stampResult" class="stamp-result"></div>
-        <div id="overlayActions" class="button-row"></div>
-      </div>
-    </div>
-
-    <div id="settingsPanel" class="overlay hidden" role="dialog" aria-modal="true">
-      <div class="modal">
-        <h2>Settings</h2>
-        <label class="toggle"><input id="soundToggle" type="checkbox"> Sound effects</label>
-        <label class="toggle"><input id="musicToggle" type="checkbox"> Music pulse</label>
-        <label class="toggle"><input id="shakeToggle" type="checkbox"> Screen shake</label>
-        <div class="button-row">
-          <button class="btn primary" id="settingsSaveBtn" type="button">Done</button>
-          <button class="btn" id="restoreBackupBtn" type="button">Restore Backup Save</button>
-          <button class="btn danger" id="resetBtn" type="button">Reset Progress</button>
+        <div class="control-block">
+          <span class="label">Bubble</span>
+          <div class="segmented" role="group" aria-label="Bubble type">
+            <button class="active" data-bubble="thought" type="button">Think</button>
+            <button data-bubble="speech" type="button">Say</button>
+          </div>
         </div>
-      </div>
-    </div>
+
+        <div class="control-block">
+          <span class="label">Mood</span>
+          <select id="moodSelect" aria-label="Phrase mood">
+            <option value="random">All the silliness</option>
+            <option value="food">Food crimes</option>
+            <option value="royalty">Tiny royalty</option>
+            <option value="chaos">Gentle chaos</option>
+            <option value="nap">Nap science</option>
+            <option value="dramatic">Very dramatic</option>
+            <option value="compliment">Sweet little compliments</option>
+          </select>
+        </div>
+
+        <div class="control-block">
+          <span class="label">Phrase</span>
+          <textarea id="phraseInput" rows="3" maxlength="110" aria-label="Pet phrase"></textarea>
+          <div class="button-grid">
+            <button class="btn primary" id="phraseBtn" type="button">New Phrase</button>
+            <button class="btn" id="shortBtn" type="button">Short</button>
+          </div>
+        </div>
+
+        <div class="control-block">
+          <span class="label">Bubble Spot</span>
+          <div class="position-grid" role="group" aria-label="Bubble position">
+            <button data-position="top-left" type="button" aria-label="Top left"></button>
+            <button class="active" data-position="top-right" type="button" aria-label="Top right"></button>
+            <button data-position="bottom-left" type="button" aria-label="Bottom left"></button>
+            <button data-position="bottom-right" type="button" aria-label="Bottom right"></button>
+          </div>
+        </div>
+
+        <div class="control-block sliders">
+          <label>
+            <span>Bubble Size</span>
+            <input id="sizeRange" type="range" min="72" max="132" value="100">
+          </label>
+          <label>
+            <span>Text Size</span>
+            <input id="textRange" type="range" min="70" max="125" value="100">
+          </label>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary" id="downloadBtn" type="button">Download Image</button>
+          <button class="btn" id="clearBtn" type="button">Clear Photo</button>
+        </div>
+      </aside>
+    </section>
   </main>
   <script type="module" src="game.js"></script>
 </body>
 </html>
-
