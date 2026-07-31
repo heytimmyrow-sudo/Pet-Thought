@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -33,7 +33,7 @@
 
     <section id="menuScreen" class="screen menu-screen hidden">
       <div class="menu-head">
-        <button class="btn icon" data-screen="titleScreen" type="button" aria-label="Back">‹</button>
+        <button class="btn icon" data-screen="titleScreen" type="button" aria-label="Back">&lt;</button>
         <div>
           <p class="eyebrow">Base Game</p>
           <h2>Level Select</h2>
@@ -44,7 +44,7 @@
 
     <section id="packsScreen" class="screen menu-screen hidden">
       <div class="menu-head">
-        <button class="btn icon" data-screen="titleScreen" type="button" aria-label="Back">‹</button>
+        <button class="btn icon" data-screen="titleScreen" type="button" aria-label="Back">&lt;</button>
         <div>
           <p class="eyebrow">Update-safe content</p>
           <h2>Expansion Packs</h2>
@@ -64,9 +64,9 @@
       </header>
       <canvas id="gameCanvas" width="960" height="540" aria-label="Magnet Mayhem Delivery game canvas"></canvas>
       <nav class="touch-controls" aria-label="Mobile controls">
-        <button data-touch="left" type="button">←</button>
-        <button data-touch="right" type="button">→</button>
-        <button data-touch="jump" type="button">↑</button>
+        <button data-touch="left" type="button">&lt;</button>
+        <button data-touch="right" type="button">&gt;</button>
+        <button data-touch="jump" type="button">^</button>
         <button data-touch="pickup" type="button">E</button>
         <button data-touch="flip" type="button">F</button>
         <button data-touch="restart" type="button">R</button>
@@ -98,3 +98,4 @@
   <script type="module" src="game.js"></script>
 </body>
 </html>
+

@@ -1,4 +1,4 @@
-import { expansionRegistry } from "./expansions/expansion-registry.js";
+﻿import { expansionRegistry } from "./expansions/expansion-registry.js";
 import { exportSave, importSaveFile, loadSave, recordLevelResult, resetSave, saveProgress } from "./save-system.js";
 
 const $ = (selector) => document.querySelector(selector);
@@ -7,7 +7,10 @@ const canvas = $("#gameCanvas");
 const ctx = canvas.getContext("2d");
 const W = canvas.width;
 const H = canvas.height;
-const G = 1850;
+const G = 1650;
+const PLAYER_SPEED = 330;
+const JUMP_SPEED = 610;
+const MAGNET_DRAG = .992;
 const keys = new Set();
 const heldTouch = new Set();
 const effects = [];
@@ -16,6 +19,7 @@ let game = null;
 let lastFrame = 0;
 let audioCtx = null;
 let musicTimer = null;
+let frameRequest = 0;
 
 const screens = ["titleScreen", "menuScreen", "packsScreen", "gameScreen"];
 const colors = {
@@ -42,6 +46,7 @@ function makeGame(expansionId = "base_game", levelIndex = 0) {
     polarity: 1,
     shake: 0,
     flipFlash: 0,
+    flipCooldown: 0,
     completionTimer: 0,
     player: { ...body(level.spawn.x, level.spawn.y, 32, 42, false), speed: 0, grounded: false, coyote: 0, jumpBuffer: 0, facing: 1, carry: false, squash: 0 },
     package: { ...packageBody, health: 3, carried: false, hitCooldown: 0, wobble: 0 },
@@ -50,7 +55,9 @@ function makeGame(expansionId = "base_game", levelIndex = 0) {
     boxes: (level.boxes || []).map((b) => body(b.x, b.y, b.w, b.h, true)),
     hazards: [...(level.hazards || []), ...(level.movingHazards || [])].map((h) => ({ ...h, baseX: h.x, baseY: h.y, t: Math.random() * 3 })),
     plates: (level.plates || []).map((p) => ({ ...p, pressed: false })),
-    message: levelIndex === 0 ? "A/D move, jump, E carries the package, F flips polarity." : ""
+    message: level.hint || "Deliver the robot and package to the green chute.",
+    messageTimer: 7,
+    tip: ""
   };
 }
 
@@ -71,22 +78,27 @@ function startLevel(expansionId, index) {
   showScreen("gameScreen");
   updateHud();
   ping(220, .04, "square");
-  requestAnimationFrame(loop);
+  if (!frameRequest) frameRequest = requestAnimationFrame(loop);
 }
 
 function loop(now) {
-  if (!game) return;
+  if (!game) {
+    frameRequest = 0;
+    return;
+  }
   const dt = Math.min(.033, (now - (lastFrame || now)) / 1000);
   lastFrame = now;
   if (game.mode === "playing") update(dt);
   draw();
-  requestAnimationFrame(loop);
+  frameRequest = requestAnimationFrame(loop);
 }
 
 function update(dt) {
   game.elapsed = (performance.now() - game.startedAt) / 1000;
   game.flipFlash = Math.max(0, game.flipFlash - dt * 2.6);
+  game.flipCooldown = Math.max(0, game.flipCooldown - dt);
   game.shake = Math.max(0, game.shake - dt * 14);
+  game.messageTimer = Math.max(0, game.messageTimer - dt);
   game.package.hitCooldown = Math.max(0, game.package.hitCooldown - dt);
   updatePlates();
   updateDoorsAndPlatforms(dt);
@@ -100,6 +112,7 @@ function update(dt) {
   });
   checkHazards();
   checkDelivery(dt);
+  updateTip();
   updateHud();
   for (let i = effects.length - 1; i >= 0; i--) {
     effects[i].life -= dt;
@@ -113,13 +126,13 @@ function updatePlayer(dt) {
   const right = keys.has("arrowright") || keys.has("d") || heldTouch.has("right");
   const dir = (right ? 1 : 0) - (left ? 1 : 0);
   if (dir) p.facing = dir;
-  const target = dir * 285;
+  const target = dir * PLAYER_SPEED;
   p.vx += (target - p.vx) * Math.min(1, dt * (dir ? 16 : 10));
   p.vy += G * dt;
   p.coyote = p.grounded ? .1 : Math.max(0, p.coyote - dt);
   p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
   if (p.jumpBuffer && p.coyote) {
-    p.vy = -650;
+    p.vy = -JUMP_SPEED;
     p.grounded = false;
     p.coyote = 0;
     p.jumpBuffer = 0;
@@ -132,8 +145,8 @@ function updatePlayer(dt) {
   if (p.carry) {
     const pack = game.package;
     pack.carried = true;
-    pack.x += ((p.x + p.w / 2 + p.facing * 24) - (pack.x + pack.w / 2)) * .45;
-    pack.y += ((p.y + 10) - pack.y) * .45;
+    pack.x += ((p.x + p.w / 2 + p.facing * 26) - (pack.x + pack.w / 2)) * .55;
+    pack.y += ((p.y + 9) - pack.y) * .55;
     pack.vx = p.vx + p.facing * 38;
     pack.vy = p.vy * .35;
     pack.wobble += dt * 12;
@@ -147,9 +160,9 @@ function updatePackage(dt) {
   pack.vy += G * dt;
   const fallSpeed = pack.vy;
   moveBody(pack, dt, solids().concat(game.boxes));
-  if (pack.grounded) pack.vx *= .94;
-  else pack.vx *= .995;
-  if (fallSpeed > 920 && pack.grounded) damagePackage("hard impact");
+  if (pack.grounded) pack.vx *= .91;
+  else pack.vx *= MAGNET_DRAG;
+  if (fallSpeed > 1240 && pack.grounded) damagePackage("hard impact");
   pack.wobble += Math.abs(pack.vx) * dt * .03;
 }
 
@@ -227,11 +240,45 @@ function applyMagnetism(entity, dt, weight) {
     const dist = Math.max(32, Math.hypot(dx, dy));
     if (dist > m.r) continue;
     const same = game.polarity === m.polarity;
-    const force = (same ? -1 : 1) * (m.strength / dist) * (1 - dist / m.r) * 85 * weight;
+    const falloff = Math.max(.18, 1 - dist / m.r);
+    const force = (same ? -1 : 1) * m.strength * falloff * weight;
     entity.vx += (dx / dist) * force * dt;
-    entity.vy += (dy / dist) * force * dt;
-    if (Math.random() < .2) effects.push({ x: ex, y: ey, vx: (Math.random() - .5) * 80, vy: -40, color: same ? colors.red : colors.blue, life: .35, r: 2 });
+    entity.vy += (dy / dist) * force * dt * .78;
+    entity.vx = clamp(entity.vx, -760, 760);
+    entity.vy = clamp(entity.vy, -760, 760);
+    if (Math.random() < .32) effects.push({ x: ex, y: ey, vx: (same ? -dx : dx) / dist * 90 + (Math.random() - .5) * 40, vy: (same ? -dy : dy) / dist * 70, color: same ? colors.red : colors.blue, life: .38, r: 2 });
   }
+}
+
+function polarityImpulse() {
+  const targets = [game.package, ...game.boxes].filter((item) => item.magnetic && !item.carried);
+  targets.forEach((entity) => {
+    for (const m of game.level.magnets || []) {
+      const ex = entity.x + entity.w / 2;
+      const ey = entity.y + entity.h / 2;
+      const dx = m.x - ex;
+      const dy = m.y - ey;
+      const dist = Math.max(30, Math.hypot(dx, dy));
+      if (dist > m.r + 80) continue;
+      const same = game.polarity === m.polarity;
+      const amount = (same ? -1 : 1) * Math.max(180, m.strength * .34 * (1 - Math.min(dist, m.r) / (m.r + 1)));
+      entity.vx += (dx / dist) * amount;
+      entity.vy += (dy / dist) * amount * .72;
+      entity.vx = clamp(entity.vx, -820, 820);
+      entity.vy = clamp(entity.vy, -820, 820);
+      burst(entity.x + entity.w / 2, entity.y + entity.h / 2, same ? colors.red : colors.blue, 10);
+    }
+  });
+}
+
+function updateTip() {
+  const p = game.player;
+  const pack = game.package;
+  const nearPackage = Math.hypot((p.x + p.w / 2) - (pack.x + pack.w / 2), (p.y + p.h / 2) - (pack.y + pack.h / 2)) < 74;
+  if (!p.carry && nearPackage) game.tip = "Press E to pick up";
+  else if (p.carry) game.tip = "Press E to toss or drop";
+  else if ((game.level.magnets || []).length) game.tip = "Press F to flip polarity";
+  else game.tip = "Reach the green SHIP chute";
 }
 
 function checkHazards() {
@@ -259,13 +306,13 @@ function completeLevel() {
   const earned = recordLevelResult(save, game.expansion.id, game.level.id, game.elapsed, game.package.health, game.level.targetTime);
   burst(game.level.delivery.x + game.level.delivery.w / 2, game.level.delivery.y, colors.yellow, 30);
   ping(660, .08, "sine");
-  showOverlay("Delivery Complete", `Best stamp count for this route: ${earned}/3. Time ${game.elapsed.toFixed(1)}s. Target ${game.level.targetTime}s.`, "★".repeat(earned), [
+  showOverlay("Delivery Complete", `Best stamp count for this route: ${earned}/3. Time ${game.elapsed.toFixed(1)}s. Target ${game.level.targetTime}s.`, "*".repeat(earned), [
     ["Next", () => startLevel(game.expansion.id, Math.min(game.levelIndex + 1, game.expansion.levels.length - 1)), "primary"],
     ["Levels", () => showScreen("menuScreen")],
     ["Restart", () => startLevel(game.expansion.id, game.levelIndex)]
   ]);
   if (game.levelIndex === game.expansion.levels.length - 1) {
-    showOverlay("Factory Cleared", "Every base-game delivery is complete. Future expansion slots are already wired in.", "★★★", [
+    showOverlay("Factory Cleared", "Every base-game delivery is complete. Future expansion slots are already wired in.", "***", [
       ["Expansion Packs", () => showScreen("packsScreen"), "primary"],
       ["Title", () => showScreen("titleScreen")]
     ]);
@@ -302,6 +349,7 @@ function draw() {
   ctx.translate(sx, sy);
   drawBackground();
   drawMagnets();
+  drawMagneticArrows();
   drawRects(game.level.walls || [], colors.floor, "#344154");
   game.platforms.forEach((p) => drawRect(p, "#738091", "#3d4a5f"));
   game.doors.forEach((d) => { if (!d.open) drawDoor(d); });
@@ -355,8 +403,60 @@ function drawMagnets() {
     ctx.font = "900 20px Nunito";
     ctx.textAlign = "center";
     ctx.fillText(m.polarity === 1 ? "N" : "S", m.x, m.y + 7);
+    ctx.fillStyle = activePull ? "#cceeff" : "#ffd8df";
+    ctx.font = "900 13px Nunito";
+    ctx.fillText(activePull ? "PULL" : "PUSH", m.x, m.y - 38);
     ctx.restore();
   }
+}
+
+function drawMagneticArrows() {
+  const targets = [game.package, ...game.boxes].filter((item) => item.magnetic && !item.carried);
+  targets.forEach((entity) => {
+    const force = magneticForceVector(entity);
+    const mag = Math.hypot(force.x, force.y);
+    if (mag < 70) return;
+    const cx = entity.x + entity.w / 2;
+    const cy = entity.y + entity.h / 2;
+    const len = clamp(mag * .08, 22, 58);
+    const nx = force.x / mag;
+    const ny = force.y / mag;
+    ctx.save();
+    ctx.globalAlpha = .85;
+    ctx.strokeStyle = game.polarity === 1 ? colors.red : colors.blue;
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - entity.h / 2 - 10);
+    ctx.lineTo(cx + nx * len, cy - entity.h / 2 - 10 + ny * len);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + nx * len, cy - entity.h / 2 - 10 + ny * len);
+    ctx.lineTo(cx + nx * (len - 10) - ny * 5, cy - entity.h / 2 - 10 + ny * (len - 10) + nx * 5);
+    ctx.lineTo(cx + nx * (len - 10) + ny * 5, cy - entity.h / 2 - 10 + ny * (len - 10) - nx * 5);
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+function magneticForceVector(entity) {
+  let x = 0;
+  let y = 0;
+  for (const m of game.level.magnets || []) {
+    const ex = entity.x + entity.w / 2;
+    const ey = entity.y + entity.h / 2;
+    const dx = m.x - ex;
+    const dy = m.y - ey;
+    const dist = Math.max(32, Math.hypot(dx, dy));
+    if (dist > m.r) continue;
+    const same = game.polarity === m.polarity;
+    const falloff = Math.max(.18, 1 - dist / m.r);
+    const force = (same ? -1 : 1) * m.strength * falloff;
+    x += (dx / dist) * force;
+    y += (dy / dist) * force * .78;
+  }
+  return { x, y };
 }
 
 function drawHazards() {
@@ -458,13 +558,14 @@ function drawEffects() {
 }
 
 function drawMessage() {
-  if (!game.message) return;
+  const text = game.messageTimer > 0 ? game.message : game.tip;
+  if (!text) return;
   ctx.fillStyle = "rgba(10,16,25,.72)";
-  roundRect(220, 20, 520, 44, 8, true);
+  roundRect(190, 18, 580, 46, 8, true);
   ctx.fillStyle = "#f4f7fb";
-  ctx.font = "900 17px Nunito";
+  ctx.font = "900 16px Nunito";
   ctx.textAlign = "center";
-  ctx.fillText(game.message, W / 2, 49);
+  ctx.fillText(text, W / 2, 48);
 }
 
 function drawRects(list, fill, stroke) {
@@ -493,8 +594,8 @@ function renderMenus() {
     const best = save.bestTimes[key] ? `${Number(save.bestTimes[key]).toFixed(1)}s` : "No time yet";
     return `<button class="level-card" data-level="${index}" type="button">
       <b>${index + 1}. ${level.name}</b>
-      <small>Target ${level.targetTime}s · ${best}</small>
-      <div class="stamps">${"★".repeat(stamps)}${"☆".repeat(3 - stamps)}</div>
+      <small>Target ${level.targetTime}s - ${best}</small>
+      <div class="stamps">${"*".repeat(stamps)}${"-".repeat(3 - stamps)}</div>
     </button>`;
   }).join("");
   $("#packGrid").innerHTML = expansionRegistry.map((pack) => {
@@ -506,7 +607,7 @@ function renderMenus() {
       <span class="pack-icon">${pack.cover}</span>
       <b>${pack.name}</b>
       <small>${pack.description}</small>
-      <small>${pack.levels.length} levels · ${pct}% · ${earned}/${possible || 0} stamps</small>
+      <small>${pack.levels.length} levels - ${pct}% - ${earned}/${possible || 0} stamps</small>
       <div class="stamps">${status}</div>
     </button>`;
   }).join("");
@@ -548,9 +649,13 @@ function pauseGame() {
 
 function flipPolarity() {
   if (!game || game.mode !== "playing") return;
+  if (game.flipCooldown > 0) return;
   game.polarity *= -1;
   game.flipFlash = 1;
-  game.shake = 5;
+  game.flipCooldown = .16;
+  game.shake = 7;
+  game.messageTimer = 0;
+  polarityImpulse();
   burst(W / 2, H / 2, game.polarity === 1 ? colors.red : colors.blue, 36);
   ping(game.polarity === 1 ? 260 : 180, .055, "sawtooth");
 }
@@ -562,8 +667,9 @@ function pickupDrop() {
   if (p.carry) {
     p.carry = false;
     pack.carried = false;
-    pack.vx = p.vx + p.facing * 260;
-    pack.vy = Math.min(pack.vy, -150);
+    pack.vx = p.vx + p.facing * 230;
+    pack.vy = Math.min(pack.vy, -115);
+    game.messageTimer = 0;
     ping(300, .03, "triangle");
     return;
   }
@@ -571,6 +677,7 @@ function pickupDrop() {
   if (close) {
     p.carry = true;
     pack.carried = true;
+    game.messageTimer = 0;
     ping(520, .03, "sine");
   }
 }
@@ -728,3 +835,4 @@ $$("[data-touch]").forEach((button) => {
 
 renderMenus();
 showScreen("titleScreen");
+
