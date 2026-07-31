@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 const textFileNames = [
   "index.html",
   "styles.css",
+  "qr-code.js",
   "game.js"
 ];
 const binaryFileNames = [
@@ -22,6 +23,7 @@ const binaryFiles = ${JSON.stringify(binaryFiles)};
 const contentTypes = {
   "index.html": "text/html; charset=utf-8",
   "styles.css": "text/css; charset=utf-8",
+  "qr-code.js": "text/javascript; charset=utf-8",
   "game.js": "text/javascript; charset=utf-8",
   "app-photo.png": "image/png"
 };

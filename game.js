@@ -20,11 +20,18 @@ const downloadBtn = document.querySelector("#downloadBtn");
 const clearBtn = document.querySelector("#clearBtn");
 const beforeAfterBtn = document.querySelector("#beforeAfterBtn");
 const copyLinkBtn = document.querySelector("#copyLinkBtn");
+const qrBtn = document.querySelector("#qrBtn");
 const sharePhotoBtn = document.querySelector("#sharePhotoBtn");
 const shareAppBtn = document.querySelector("#shareAppBtn");
 const gallery = document.querySelector("#gallery");
 const galleryStrip = document.querySelector("#galleryStrip");
 const clearGalleryBtn = document.querySelector("#clearGalleryBtn");
+const qrModal = document.querySelector("#qrModal");
+const qrCloseBtn = document.querySelector("#qrCloseBtn");
+const qrCodeBox = document.querySelector("#qrCodeBox");
+const qrUrlText = document.querySelector("#qrUrlText");
+const copyQrLinkBtn = document.querySelector("#copyQrLinkBtn");
+const downloadQrBtn = document.querySelector("#downloadQrBtn");
 const phraseChoices = document.querySelector("#phraseChoices");
 const doodleBtn = document.querySelector("#doodleBtn");
 const doodleColor = document.querySelector("#doodleColor");
@@ -60,6 +67,7 @@ let detectorPromise = null;
 let dragMode = null;
 let activeStroke = null;
 const galleryKey = "petThoughtGallery";
+const publicAppUrl = "https://new-games-jcrow.timmyrow.chatgpt.site";
 
 const phrases = {
   cat: {
@@ -1149,11 +1157,47 @@ function addSticker(type) {
 
 async function copyAppLink() {
   try {
-    await navigator.clipboard?.writeText(window.location.href);
+    await navigator.clipboard?.writeText(publicAppUrl);
     setDetectorStatus("App link copied.", "success");
   } catch (error) {
-    setDetectorStatus("Share this link: " + window.location.href, "success");
+    setDetectorStatus("Share this link: " + publicAppUrl, "success");
   }
+}
+
+function showQrCode() {
+  renderQrCode();
+  qrModal.classList.remove("hidden");
+  qrCloseBtn.focus();
+}
+
+function hideQrCode() {
+  qrModal.classList.add("hidden");
+  qrBtn.focus();
+}
+
+function renderQrCode() {
+  qrUrlText.textContent = publicAppUrl;
+  qrCodeBox.innerHTML = "";
+  if (typeof qrcode !== "function") {
+    qrCodeBox.textContent = "QR code is loading.";
+    return;
+  }
+  const qr = qrcode(0, "M");
+  qr.addData(publicAppUrl);
+  qr.make();
+  qrCodeBox.innerHTML = qr.createSvgTag(7, 3);
+}
+
+function downloadQrCode() {
+  renderQrCode();
+  const svg = qrCodeBox.querySelector("svg");
+  if (!svg) return;
+  const blob = new Blob([svg.outerHTML], { type: "image/svg+xml" });
+  const link = document.createElement("a");
+  link.download = "pet-thought-bubbler-qr.svg";
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 function canvasPoint(event) {
@@ -1403,6 +1447,30 @@ copyLinkBtn.addEventListener("click", async () => {
   await copyAppLink();
 });
 
+qrBtn.addEventListener("click", () => {
+  showQrCode();
+});
+
+qrCloseBtn.addEventListener("click", () => {
+  hideQrCode();
+});
+
+qrModal.addEventListener("click", (event) => {
+  if (event.target === qrModal) hideQrCode();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !qrModal.classList.contains("hidden")) hideQrCode();
+});
+
+copyQrLinkBtn.addEventListener("click", async () => {
+  await copyAppLink();
+});
+
+downloadQrBtn.addEventListener("click", () => {
+  downloadQrCode();
+});
+
 shuffleAllBtn.addEventListener("click", () => {
   state.pet = pick(["cat", "dog", "either"]);
   state.bubble = pick(["thought", "speech"]);
@@ -1434,8 +1502,8 @@ sharePhotoBtn.addEventListener("click", async () => {
       await navigator.share({
         files: [file],
         title: "Pet Thought Bubbler",
-        text: `Look what my pet is thinking. Make one here: ${window.location.href}`,
-        url: window.location.href
+        text: `Look what my pet is thinking. Make one here: ${publicAppUrl}`,
+        url: publicAppUrl
       });
       saveToGallery(currentImageDataUrl());
       return;
@@ -1452,7 +1520,7 @@ shareAppBtn.addEventListener("click", async () => {
   const shareData = {
     title: "Pet Thought Bubbler",
     text: "Add silly thought bubbles to cat and dog photos.",
-    url: window.location.href
+    url: publicAppUrl
   };
 
   try {

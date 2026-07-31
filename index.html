@@ -16,7 +16,7 @@
   <title>Pet Thought Bubbler</title>
   <link rel="icon" type="image/png" href="app-photo.png">
   <link rel="apple-touch-icon" href="app-photo.png">
-  <link rel="stylesheet" href="styles.css?v=22">
+  <link rel="stylesheet" href="styles.css?v=24">
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
 </head>
@@ -185,12 +185,26 @@
           <button class="btn" id="clearBtn" type="button">Clear Photo</button>
           <button class="btn photo-only" id="beforeAfterBtn" type="button">Original</button>
           <button class="btn" id="copyLinkBtn" type="button">Copy Link</button>
+          <button class="btn" id="qrBtn" type="button">QR Code</button>
           <button class="btn primary photo-only" id="sharePhotoBtn" type="button">Share Photo</button>
           <button class="btn" id="shareAppBtn" type="button">Share App</button>
         </div>
       </aside>
     </section>
   </main>
-  <script type="module" src="game.js?v=22"></script>
+  <div class="qr-modal hidden" id="qrModal" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+    <div class="qr-card">
+      <button class="qr-close" id="qrCloseBtn" type="button" aria-label="Close QR code">×</button>
+      <h2 id="qrTitle">Scan to Open</h2>
+      <div class="qr-code-box" id="qrCodeBox" aria-label="QR code for Pet Thought Bubbler"></div>
+      <p id="qrUrlText">https://new-games-jcrow.timmyrow.chatgpt.site</p>
+      <div class="qr-actions">
+        <button class="btn primary" id="copyQrLinkBtn" type="button">Copy Link</button>
+        <button class="btn" id="downloadQrBtn" type="button">Download QR</button>
+      </div>
+    </div>
+  </div>
+  <script src="qr-code.js?v=24"></script>
+  <script type="module" src="game.js?v=24"></script>
 </body>
 </html>

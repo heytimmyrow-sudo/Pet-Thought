@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 const initialFiles = [
   "index.html",
   "styles.css",
+  "qr-code.js",
   "game.js",
   "app-photo.png"
 ];
