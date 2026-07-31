@@ -1,17 +1,27 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
-const files = {
-  "index.html": await readFile("index.html", "utf8"),
-  "styles.css": await readFile("styles.css", "utf8"),
-  "game.js": await readFile("game.js", "utf8")
-};
+const fileNames = [
+  "index.html",
+  "styles.css",
+  "game.js",
+  "save-system.js",
+  "levels/base-game.js",
+  "expansions/expansion-registry.js"
+];
+
+const files = Object.fromEntries(await Promise.all(
+  fileNames.map(async (name) => [name, await readFile(name, "utf8")])
+));
 
 const worker = `const files = ${JSON.stringify(files)};
 
 const contentTypes = {
   "index.html": "text/html; charset=utf-8",
   "styles.css": "text/css; charset=utf-8",
-  "game.js": "text/javascript; charset=utf-8"
+  "game.js": "text/javascript; charset=utf-8",
+  "save-system.js": "text/javascript; charset=utf-8",
+  "levels/base-game.js": "text/javascript; charset=utf-8",
+  "expansions/expansion-registry.js": "text/javascript; charset=utf-8"
 };
 
 export default {
