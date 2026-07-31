@@ -1,5 +1,5 @@
 ﻿import { expansionRegistry } from "./expansions/expansion-registry.js";
-import { exportSave, importSaveFile, loadSave, recordLevelResult, resetSave, saveProgress } from "./save-system.js";
+import { exportSave, hasBackupSave, importSaveFile, loadSave, recordLevelResult, resetSave, restoreBackupSave, saveProgress } from "./save-system.js";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -11,6 +11,8 @@ const G = 1650;
 const PLAYER_SPEED = 330;
 const JUMP_SPEED = 610;
 const MAGNET_DRAG = .992;
+const PICKUP_COOLDOWN = .22;
+const THROW_HOLD_TIME = .72;
 const keys = new Set();
 const heldTouch = new Set();
 const effects = [];
@@ -32,6 +34,21 @@ const colors = {
   lava: "#ff8c48"
 };
 
+const TUTORIALS = {
+  training_pickup: [
+    { id: "move", text: "Move to the package.", key: "A / D", test: (g) => g.player.x > g.level.spawn.x + 54 },
+    { id: "pickup", text: "Press E to pick up the package.", key: "E", test: (g) => g.player.carry },
+    { id: "carry", text: "Carry the package to the green SHIP chute.", key: "D", test: (g) => rects(g.player, g.level.delivery) || g.player.x > g.level.delivery.x - 90 },
+    { id: "deliver", text: "Enter the chute with both robot and package.", key: "SHIP", test: (g) => rects(g.player, g.level.delivery) && rects(g.package, g.level.delivery) }
+  ],
+  first_flip: [
+    { id: "drop", text: "Drop the package near the magnet.", key: "E", test: (g) => !g.player.carry && nearAnyMagnet(g.package, 235) },
+    { id: "flip", text: "Press F to flip polarity.", key: "F", test: (g) => g.didFlip },
+    { id: "watch", text: "Watch PUSH become PULL and follow the arrow.", key: "PUSH/PULL", test: (g) => g.package.x > 385 || g.package.vx > 120 },
+    { id: "deliver", text: "Deliver both robot and package.", key: "SHIP", test: (g) => rects(g.player, g.level.delivery) && rects(g.package, g.level.delivery) }
+  ]
+};
+
 function makeGame(expansionId = "base_game", levelIndex = 0) {
   const expansion = expansionRegistry.find((pack) => pack.id === expansionId) || expansionRegistry[0];
   const level = expansion.levels[levelIndex] || expansion.levels[0];
@@ -41,15 +58,17 @@ function makeGame(expansionId = "base_game", levelIndex = 0) {
     level,
     levelIndex,
     mode: "playing",
-    startedAt: performance.now(),
     elapsed: 0,
     polarity: 1,
     shake: 0,
     flipFlash: 0,
     flipCooldown: 0,
     completionTimer: 0,
-    player: { ...body(level.spawn.x, level.spawn.y, 32, 42, false), speed: 0, grounded: false, coyote: 0, jumpBuffer: 0, facing: 1, carry: false, squash: 0 },
-    package: { ...packageBody, health: 3, carried: false, hitCooldown: 0, wobble: 0 },
+    restartTimer: 0,
+    didFlip: false,
+    result: null,
+    player: { ...body(level.spawn.x, level.spawn.y, 32, 42, false), speed: 0, grounded: false, coyote: 0, jumpBuffer: 0, facing: 1, carry: false, squash: 0, pickupCooldown: 0, holdPickup: false, pickupStartedCarrying: false, throwCharge: 0 },
+    package: { ...packageBody, health: 3, carried: false, hitCooldown: 0, wobble: 0, pickupCooldown: 0, lastCarried: false },
     platforms: (level.platforms || []).map((p) => ({ ...p, baseX: p.x, baseY: p.y, targetX: p.x, targetY: p.y })),
     doors: (level.doors || []).map((d) => ({ ...d, open: false })),
     boxes: (level.boxes || []).map((b) => body(b.x, b.y, b.w, b.h, true)),
@@ -57,8 +76,15 @@ function makeGame(expansionId = "base_game", levelIndex = 0) {
     plates: (level.plates || []).map((p) => ({ ...p, pressed: false })),
     message: level.hint || "Deliver the robot and package to the green chute.",
     messageTimer: 7,
-    tip: ""
+    tip: "",
+    tutorial: makeTutorial(level.id)
   };
+}
+
+function makeTutorial(levelId) {
+  const steps = TUTORIALS[levelId];
+  if (!steps || save.tutorial.skipped || save.tutorial.completed[levelId]) return null;
+  return { levelId, steps, index: 0, pulse: 0 };
 }
 
 function body(x, y, w, h, magnetic) {
@@ -71,12 +97,15 @@ function showScreen(id) {
   $("#settingsPanel").classList.add("hidden");
   if (id !== "gameScreen") game = null;
   renderMenus();
+  updateTutorialUi();
 }
 
 function startLevel(expansionId, index) {
   game = makeGame(expansionId, index);
+  lastFrame = 0;
   showScreen("gameScreen");
   updateHud();
+  updateTutorialUi();
   ping(220, .04, "square");
   if (!frameRequest) frameRequest = requestAnimationFrame(loop);
 }
@@ -94,12 +123,14 @@ function loop(now) {
 }
 
 function update(dt) {
-  game.elapsed = (performance.now() - game.startedAt) / 1000;
+  game.elapsed += dt;
   game.flipFlash = Math.max(0, game.flipFlash - dt * 2.6);
   game.flipCooldown = Math.max(0, game.flipCooldown - dt);
   game.shake = Math.max(0, game.shake - dt * 14);
   game.messageTimer = Math.max(0, game.messageTimer - dt);
   game.package.hitCooldown = Math.max(0, game.package.hitCooldown - dt);
+  game.package.pickupCooldown = Math.max(0, game.package.pickupCooldown - dt);
+  game.player.pickupCooldown = Math.max(0, game.player.pickupCooldown - dt);
   updatePlates();
   updateDoorsAndPlatforms(dt);
   updateHazards(dt);
@@ -112,6 +143,7 @@ function update(dt) {
   });
   checkHazards();
   checkDelivery(dt);
+  updateTutorial(dt);
   updateTip();
   updateHud();
   for (let i = effects.length - 1; i >= 0; i--) {
@@ -129,8 +161,10 @@ function updatePlayer(dt) {
   const target = dir * PLAYER_SPEED;
   p.vx += (target - p.vx) * Math.min(1, dt * (dir ? 16 : 10));
   p.vy += G * dt;
+  applyRobotMagnetism(dt);
   p.coyote = p.grounded ? .1 : Math.max(0, p.coyote - dt);
   p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
+  if (p.holdPickup && p.carry) p.throwCharge = Math.min(1, p.throwCharge + dt / THROW_HOLD_TIME);
   if (p.jumpBuffer && p.coyote) {
     p.vy = -JUMP_SPEED;
     p.grounded = false;
@@ -150,6 +184,24 @@ function updatePlayer(dt) {
     pack.vx = p.vx + p.facing * 38;
     pack.vy = p.vy * .35;
     pack.wobble += dt * 12;
+  }
+}
+
+function applyRobotMagnetism(dt) {
+  const p = game.player;
+  const weight = p.carry ? .2 : .08;
+  for (const m of game.level.magnets || []) {
+    const cx = p.x + p.w / 2;
+    const cy = p.y + p.h / 2;
+    const dx = m.x - cx;
+    const dy = m.y - cy;
+    const dist = Math.max(36, Math.hypot(dx, dy));
+    if (dist > Math.min(150, m.r * .42)) continue;
+    const same = game.polarity === m.polarity;
+    const falloff = 1 - dist / Math.min(150, m.r * .42);
+    const force = (same ? -1 : 1) * m.strength * falloff * weight;
+    p.vx += (dx / dist) * force * dt;
+    p.vy += (dy / dist) * force * dt * .45;
   }
 }
 
@@ -281,6 +333,58 @@ function updateTip() {
   else game.tip = "Reach the green SHIP chute";
 }
 
+function updateTutorial(dt) {
+  if (!game.tutorial) {
+    updateTutorialUi();
+    return;
+  }
+  game.tutorial.pulse += dt;
+  const step = currentTutorialStep();
+  if (step?.test(game)) {
+    game.tutorial.index += 1;
+    burst(game.player.x + game.player.w / 2, game.player.y, colors.green, 12);
+    ping(620, .035, "sine");
+    if (game.tutorial.index >= game.tutorial.steps.length) {
+      save.tutorial.completed[game.tutorial.levelId] = true;
+      saveProgress(save);
+      game.tutorial = null;
+    }
+  }
+  updateTutorialUi();
+}
+
+function currentTutorialStep() {
+  return game.tutorial?.steps[game.tutorial.index] || null;
+}
+
+function skipTutorial() {
+  if (!game?.tutorial) return;
+  save.tutorial.skipped = true;
+  save.tutorial.completed[game.tutorial.levelId] = true;
+  saveProgress(save);
+  game.tutorial = null;
+  updateTutorialUi();
+}
+
+function updateTutorialUi() {
+  const step = game?.tutorial ? currentTutorialStep() : null;
+  $("#skipTutorialBtn").classList.toggle("hidden", !step);
+  $$("[data-touch]").forEach((button) => button.classList.toggle("tutorial-highlight", step && touchMatchesStep(button.dataset.touch, step.key)));
+}
+
+function touchMatchesStep(touch, key) {
+  if (key.includes("A") || key === "D") return touch === "left" || touch === "right";
+  if (key === "E") return touch === "pickup";
+  if (key === "F") return touch === "flip";
+  return false;
+}
+
+function nearAnyMagnet(entity, distance) {
+  const cx = entity.x + entity.w / 2;
+  const cy = entity.y + entity.h / 2;
+  return (game.level.magnets || []).some((m) => Math.hypot(m.x - cx, m.y - cy) <= distance);
+}
+
 function checkHazards() {
   for (const h of game.hazards) {
     const active = h.activePolarity == null || h.activePolarity === game.polarity;
@@ -303,19 +407,52 @@ function checkDelivery(dt) {
 function completeLevel() {
   if (game.mode !== "playing") return;
   game.mode = "complete";
-  const earned = recordLevelResult(save, game.expansion.id, game.level.id, game.elapsed, game.package.health, game.level.targetTime);
+  const result = recordLevelResult(save, game.expansion.id, game.level.id, game.elapsed, game.package.health, game.level.targetTime);
+  save.tutorial.completed[game.level.id] = true;
+  saveProgress(save);
+  game.result = result;
   burst(game.level.delivery.x + game.level.delivery.w / 2, game.level.delivery.y, colors.yellow, 30);
   ping(660, .08, "sine");
-  showOverlay("Delivery Complete", `Best stamp count for this route: ${earned}/3. Time ${game.elapsed.toFixed(1)}s. Target ${game.level.targetTime}s.`, "*".repeat(earned), [
-    ["Next", () => startLevel(game.expansion.id, Math.min(game.levelIndex + 1, game.expansion.levels.length - 1)), "primary"],
+  showLevelComplete(result);
+}
+
+function showLevelComplete(result) {
+  const isFinal = game.levelIndex === game.expansion.levels.length - 1;
+  const previous = result.previousBest ? `${result.previousBest.toFixed(1)}s` : "None";
+  const bestLine = result.isNewBest ? `New best: ${result.bestTime.toFixed(1)}s` : `Best remains: ${result.bestTime.toFixed(1)}s`;
+  showOverlay("Delivery Complete", "", "", [
+    [isFinal ? "Factory Results" : "Next", () => isFinal ? showFactoryCleared() : startLevel(game.expansion.id, game.levelIndex + 1), "primary"],
     ["Levels", () => showScreen("menuScreen")],
     ["Restart", () => startLevel(game.expansion.id, game.levelIndex)]
   ]);
-  if (game.levelIndex === game.expansion.levels.length - 1) {
-    showOverlay("Factory Cleared", "Every base-game delivery is complete. Future expansion slots are already wired in.", "***", [
-      ["Expansion Packs", () => showScreen("packsScreen"), "primary"],
-      ["Title", () => showScreen("titleScreen")]
-    ]);
+  $("#overlayText").innerHTML = `
+    <span class="result-line"><b>Final time</b>${game.elapsed.toFixed(1)}s</span>
+    <span class="result-line"><b>Target time</b>${game.level.targetTime}s</span>
+    <span class="result-line"><b>Previous best</b>${previous}</span>
+    <span class="result-line highlight">${bestLine}</span>
+    <span class="result-line"><b>Package durability</b>${game.package.health}/3</span>
+    <span class="result-line"><b>Run stamps</b>${result.runStamps}/3</span>
+    <span class="result-line"><b>Best stamps</b>${result.bestStamps}/3</span>
+    <span class="result-line"><b>Progress</b>Level ${game.levelIndex + 1} of ${game.expansion.levels.length}</span>`;
+  animateStamps(result.runStamps, result.bestStamps);
+}
+
+function showFactoryCleared() {
+  showOverlay("Factory Cleared", "Every base-game delivery is complete. Future expansion slots are already wired in.", "", [
+    ["Expansion Packs", () => showScreen("packsScreen"), "primary"],
+    ["Title", () => showScreen("titleScreen")]
+  ]);
+  $("#stampResult").innerHTML = `<span class="stamp-icon earned">★</span><span class="stamp-icon earned">★</span><span class="stamp-icon earned">★</span>`;
+}
+
+function animateStamps(runStamps, bestStamps) {
+  $("#stampResult").innerHTML = "";
+  for (let i = 0; i < 3; i++) {
+    const stamp = document.createElement("span");
+    stamp.className = `stamp-icon ${i < runStamps ? "earned" : ""} ${i < bestStamps ? "best" : ""}`;
+    stamp.textContent = "★";
+    stamp.style.animationDelay = `${i * 160}ms`;
+    $("#stampResult").append(stamp);
   }
 }
 
@@ -357,10 +494,13 @@ function draw() {
   game.boxes.forEach(drawBox);
   drawHazards();
   drawDelivery();
+  drawPackageShadow();
+  drawThrowPreview();
   drawPackage();
   drawPlayer();
   drawEffects();
   drawMessage();
+  drawTutorial();
   if (game.flipFlash > 0) {
     ctx.globalAlpha = game.flipFlash * .3;
     ctx.fillStyle = game.polarity === 1 ? colors.red : colors.blue;
@@ -414,30 +554,34 @@ function drawMagneticArrows() {
   const targets = [game.package, ...game.boxes].filter((item) => item.magnetic && !item.carried);
   targets.forEach((entity) => {
     const force = magneticForceVector(entity);
-    const mag = Math.hypot(force.x, force.y);
-    if (mag < 70) return;
-    const cx = entity.x + entity.w / 2;
-    const cy = entity.y + entity.h / 2;
-    const len = clamp(mag * .08, 22, 58);
-    const nx = force.x / mag;
-    const ny = force.y / mag;
-    ctx.save();
-    ctx.globalAlpha = .85;
-    ctx.strokeStyle = game.polarity === 1 ? colors.red : colors.blue;
-    ctx.fillStyle = ctx.strokeStyle;
-    ctx.lineWidth = 5;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - entity.h / 2 - 10);
-    ctx.lineTo(cx + nx * len, cy - entity.h / 2 - 10 + ny * len);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cx + nx * len, cy - entity.h / 2 - 10 + ny * len);
-    ctx.lineTo(cx + nx * (len - 10) - ny * 5, cy - entity.h / 2 - 10 + ny * (len - 10) + nx * 5);
-    ctx.lineTo(cx + nx * (len - 10) + ny * 5, cy - entity.h / 2 - 10 + ny * (len - 10) - nx * 5);
-    ctx.fill();
-    ctx.restore();
+    drawForceArrow(entity.x + entity.w / 2, entity.y - 10, entity.h, force, .08, 70);
   });
+  const robotForce = robotForceVector();
+  drawForceArrow(game.player.x + game.player.w / 2, game.player.y - 8, game.player.h, robotForce, .16, 45);
+}
+
+function drawForceArrow(cx, cy, height, force, scale, threshold) {
+  const mag = Math.hypot(force.x, force.y);
+  if (mag < threshold) return;
+  const len = clamp(mag * scale, 18, 54);
+  const nx = force.x / mag;
+  const ny = force.y / mag;
+  ctx.save();
+  ctx.globalAlpha = .85;
+  ctx.strokeStyle = game.polarity === 1 ? colors.red : colors.blue;
+  ctx.fillStyle = ctx.strokeStyle;
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + nx * len, cy + ny * len);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + nx * len, cy + ny * len);
+  ctx.lineTo(cx + nx * (len - 10) - ny * 5, cy + ny * (len - 10) + nx * 5);
+  ctx.lineTo(cx + nx * (len - 10) + ny * 5, cy + ny * (len - 10) - nx * 5);
+  ctx.fill();
+  ctx.restore();
 }
 
 function magneticForceVector(entity) {
@@ -455,6 +599,27 @@ function magneticForceVector(entity) {
     const force = (same ? -1 : 1) * m.strength * falloff;
     x += (dx / dist) * force;
     y += (dy / dist) * force * .78;
+  }
+  return { x, y };
+}
+
+function robotForceVector() {
+  const p = game.player;
+  let x = 0;
+  let y = 0;
+  const weight = p.carry ? .2 : .08;
+  for (const m of game.level.magnets || []) {
+    const cx = p.x + p.w / 2;
+    const cy = p.y + p.h / 2;
+    const dx = m.x - cx;
+    const dy = m.y - cy;
+    const range = Math.min(150, m.r * .42);
+    const dist = Math.max(36, Math.hypot(dx, dy));
+    if (dist > range) continue;
+    const same = game.polarity === m.polarity;
+    const force = (same ? -1 : 1) * m.strength * (1 - dist / range) * weight;
+    x += (dx / dist) * force;
+    y += (dy / dist) * force * .45;
   }
   return { x, y };
 }
@@ -493,6 +658,57 @@ function drawDelivery() {
   ctx.font = "900 16px Nunito";
   ctx.textAlign = "center";
   ctx.fillText("SHIP", d.x + d.w / 2, d.y + d.h / 2 + 12);
+}
+
+function drawPackageShadow() {
+  const p = game.package;
+  const ground = findGroundY(p);
+  const distance = clamp(ground - (p.y + p.h), 0, 220);
+  ctx.save();
+  ctx.globalAlpha = .34 * (1 - distance / 260);
+  ctx.fillStyle = "#02050a";
+  ctx.beginPath();
+  ctx.ellipse(p.x + p.w / 2, ground + 3, clamp(22 - distance * .035, 11, 24), 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawThrowPreview() {
+  const p = game.player;
+  if (!p.carry || !p.holdPickup || p.throwCharge <= .05) return;
+  const power = p.throwCharge;
+  let x = game.package.x + game.package.w / 2;
+  let y = game.package.y + game.package.h / 2;
+  let vx = p.vx + p.facing * (250 + power * 390);
+  let vy = -150 - power * 210;
+  ctx.save();
+  ctx.fillStyle = "rgba(77,183,255,.75)";
+  for (let i = 0; i < 18; i++) {
+    vx *= .992;
+    vy += G * .035;
+    x += vx * .035;
+    y += vy * .035;
+    if (y > H - 34) break;
+    ctx.globalAlpha = 1 - i / 18;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#101825";
+  roundRect(p.x - 8, p.y - 18, 48, 8, 4, true);
+  ctx.fillStyle = colors.blue;
+  roundRect(p.x - 8, p.y - 18, 48 * power, 8, 4, true);
+  ctx.restore();
+}
+
+function findGroundY(entity) {
+  const cx = entity.x + entity.w / 2;
+  let ground = H - 40;
+  for (const s of solids()) {
+    if (cx >= s.x && cx <= s.x + s.w && s.y >= entity.y + entity.h) ground = Math.min(ground, s.y);
+  }
+  return ground;
 }
 
 function drawPlayer() {
@@ -568,6 +784,34 @@ function drawMessage() {
   ctx.fillText(text, W / 2, 48);
 }
 
+function drawTutorial() {
+  if (!game.tutorial) return;
+  const step = currentTutorialStep();
+  if (!step) return;
+  const x = 228;
+  const y = 74;
+  ctx.save();
+  ctx.fillStyle = "rgba(12,18,28,.92)";
+  roundRect(x, y, 504, 76, 10, true);
+  ctx.strokeStyle = game.polarity === 1 ? colors.red : colors.blue;
+  ctx.lineWidth = 3;
+  roundRect(x + 1.5, y + 1.5, 501, 73, 10, false);
+  ctx.fillStyle = colors.yellow;
+  roundRect(x + 18, y + 19, 86, 38, 8, true);
+  ctx.fillStyle = "#1a2332";
+  ctx.font = "900 18px Nunito";
+  ctx.textAlign = "center";
+  ctx.fillText(step.key, x + 61, y + 44);
+  ctx.fillStyle = "#f4f7fb";
+  ctx.font = "900 17px Nunito";
+  ctx.textAlign = "left";
+  ctx.fillText(step.text, x + 122, y + 33);
+  ctx.fillStyle = "#9cafc6";
+  ctx.font = "800 12px Nunito";
+  ctx.fillText(`Step ${game.tutorial.index + 1} of ${game.tutorial.steps.length}`, x + 122, y + 54);
+  ctx.restore();
+}
+
 function drawRects(list, fill, stroke) {
   list.forEach((r) => drawRect(r, fill, stroke));
 }
@@ -641,7 +885,7 @@ function pauseGame() {
   if (!game || game.mode !== "playing") return;
   game.mode = "paused";
   showOverlay("Paused", "Factory time is stopped. Your package is exactly as anxious as you left it.", "", [
-    ["Resume", () => { $("#overlay").classList.add("hidden"); game.mode = "playing"; game.startedAt = performance.now() - game.elapsed * 1000; }, "primary"],
+    ["Resume", () => { $("#overlay").classList.add("hidden"); game.mode = "playing"; lastFrame = 0; }, "primary"],
     ["Restart", () => startLevel(game.expansion.id, game.levelIndex)],
     ["Levels", () => showScreen("menuScreen")]
   ]);
@@ -651,35 +895,66 @@ function flipPolarity() {
   if (!game || game.mode !== "playing") return;
   if (game.flipCooldown > 0) return;
   game.polarity *= -1;
+  game.didFlip = true;
   game.flipFlash = 1;
-  game.flipCooldown = .16;
+  game.flipCooldown = .35;
   game.shake = 7;
   game.messageTimer = 0;
   polarityImpulse();
-  burst(W / 2, H / 2, game.polarity === 1 ? colors.red : colors.blue, 36);
-  ping(game.polarity === 1 ? 260 : 180, .055, "sawtooth");
+  burst(W / 2, H / 2, game.polarity === 1 ? colors.red : colors.blue, 56);
+  ping(game.polarity === 1 ? 300 : 190, .075, "sawtooth");
+  window.setTimeout(() => ping(game.polarity === 1 ? 430 : 280, .04, "square"), 50);
 }
 
-function pickupDrop() {
+function startPickupAction() {
   if (!game || game.mode !== "playing") return;
   const p = game.player;
   const pack = game.package;
+  if (p.holdPickup) return;
+  p.holdPickup = true;
+  p.throwCharge = 0;
+  p.pickupStartedCarrying = p.carry;
   if (p.carry) {
-    p.carry = false;
-    pack.carried = false;
-    pack.vx = p.vx + p.facing * 230;
-    pack.vy = Math.min(pack.vy, -115);
-    game.messageTimer = 0;
-    ping(300, .03, "triangle");
     return;
   }
+  if (p.pickupCooldown > 0 || pack.pickupCooldown > 0) return;
   const close = Math.hypot((p.x + p.w / 2) - (pack.x + pack.w / 2), (p.y + p.h / 2) - (pack.y + pack.h / 2)) < 72;
   if (close) {
+    const midair = !pack.grounded;
     p.carry = true;
     pack.carried = true;
+    pack.pickupCooldown = 0;
     game.messageTimer = 0;
-    ping(520, .03, "sine");
+    burst(pack.x + pack.w / 2, pack.y + pack.h / 2, midair ? colors.green : colors.yellow, midair ? 16 : 6);
+    ping(midair ? 740 : 520, midair ? .055 : .03, "sine");
   }
+}
+
+function releasePickupAction() {
+  if (!game) return;
+  const p = game.player;
+  if (!p.holdPickup) return;
+  p.holdPickup = false;
+  if (!game || game.mode !== "playing") return;
+  if (!p.carry || !p.pickupStartedCarrying) {
+    p.throwCharge = 0;
+    p.pickupStartedCarrying = false;
+    return;
+  }
+  const pack = game.package;
+  const charged = p.throwCharge > .18;
+  const power = charged ? p.throwCharge : 0;
+  p.carry = false;
+  pack.carried = false;
+  pack.pickupCooldown = PICKUP_COOLDOWN;
+  p.pickupCooldown = PICKUP_COOLDOWN;
+  pack.vx = p.vx + p.facing * (charged ? 250 + power * 390 : 95);
+  pack.vy = charged ? -150 - power * 210 : -55;
+  p.throwCharge = 0;
+  p.pickupStartedCarrying = false;
+  game.messageTimer = 0;
+  burst(pack.x + pack.w / 2, pack.y + pack.h / 2, charged ? colors.blue : colors.yellow, charged ? 14 : 6);
+  ping(charged ? 380 + power * 180 : 300, charged ? .06 : .03, charged ? "sawtooth" : "triangle");
 }
 
 function burst(x, y, color, count) {
@@ -733,7 +1008,7 @@ function clamp(value, min, max) {
 
 function handleAction(action) {
   if (action === "jump" && game) game.player.jumpBuffer = .12;
-  if (action === "pickup") pickupDrop();
+  if (action === "pickup") startPickupAction();
   if (action === "flip") flipPolarity();
   if (action === "restart" && game) startLevel(game.expansion.id, game.levelIndex);
 }
@@ -743,12 +1018,16 @@ document.addEventListener("keydown", (event) => {
   if (["arrowleft", "arrowright", "arrowup", " ", "a", "d", "w", "e", "f", "shift", "r", "escape"].includes(key)) event.preventDefault();
   keys.add(key);
   if (key === "w" || key === "arrowup" || key === " ") handleAction("jump");
-  if (key === "e") handleAction("pickup");
+  if (key === "e" && !event.repeat) handleAction("pickup");
   if (key === "f" || key === "shift") handleAction("flip");
   if (key === "r" && game) startLevel(game.expansion.id, game.levelIndex);
   if (key === "escape") pauseGame();
 }, { passive: false });
-document.addEventListener("keyup", (event) => keys.delete(event.key.toLowerCase()));
+document.addEventListener("keyup", (event) => {
+  const key = event.key.toLowerCase();
+  keys.delete(key);
+  if (key === "e") releasePickupAction();
+});
 document.addEventListener("touchmove", (event) => event.preventDefault(), { passive: false });
 window.addEventListener("blur", pauseGame);
 
@@ -761,10 +1040,12 @@ $("#levelSelectBtn").addEventListener("click", () => showScreen("menuScreen"));
 $("#packsBtn").addEventListener("click", () => showScreen("packsScreen"));
 $("#restartBtn").addEventListener("click", () => game && startLevel(game.expansion.id, game.levelIndex));
 $("#pauseBtn").addEventListener("click", pauseGame);
+$("#skipTutorialBtn").addEventListener("click", skipTutorial);
 $("#settingsOpenBtn").addEventListener("click", () => {
   $("#soundToggle").checked = save.settings.sound;
   $("#musicToggle").checked = save.settings.music;
   $("#shakeToggle").checked = save.settings.shake;
+  $("#restoreBackupBtn").disabled = !hasBackupSave();
   $("#settingsPanel").classList.remove("hidden");
 });
 $("#settingsSaveBtn").addEventListener("click", () => {
@@ -780,6 +1061,19 @@ $("#resetBtn").addEventListener("click", () => {
     save = resetSave();
     renderMenus();
     $("#settingsPanel").classList.add("hidden");
+  }
+});
+$("#restoreBackupBtn").addEventListener("click", () => {
+  if (!hasBackupSave()) return;
+  if (confirm("Restore the backup save for Magnet Mayhem Delivery? Current progress will be replaced after the backup is validated.")) {
+    try {
+      save = restoreBackupSave();
+      renderMenus();
+      $("#settingsPanel").classList.add("hidden");
+      alert("Backup save restored.");
+    } catch {
+      alert("The backup save could not be restored.");
+    }
   }
 });
 $("#exportBtn").addEventListener("click", () => exportSave(save));
@@ -820,17 +1114,29 @@ $$("[data-touch]").forEach((button) => {
   const name = button.dataset.touch;
   const down = (event) => {
     event.preventDefault();
+    if (event.type === "mousedown" && button.dataset.pointerHandled) return;
+    button.dataset.pointerHandled = "1";
+    window.setTimeout(() => delete button.dataset.pointerHandled, 80);
     heldTouch.add(name);
     handleAction(name);
   };
   const up = (event) => {
     event.preventDefault();
     heldTouch.delete(name);
+    if (name === "pickup") releasePickupAction();
   };
   button.addEventListener("pointerdown", down);
   button.addEventListener("pointerup", up);
   button.addEventListener("pointercancel", up);
   button.addEventListener("pointerleave", up);
+  button.addEventListener("mousedown", down);
+  button.addEventListener("mouseup", up);
+  button.addEventListener("mouseleave", up);
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (button.dataset.pointerHandled) return;
+    if (name !== "left" && name !== "right" && name !== "pickup") handleAction(name);
+  });
 });
 
 renderMenus();
