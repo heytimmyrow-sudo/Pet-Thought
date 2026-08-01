@@ -63,6 +63,7 @@ const state = {
   manual: null,
   lastBubble: null,
   sceneTags: [],
+  sceneDetails: [],
   petName: "",
   phraseOptions: [],
   stickers: [],
@@ -941,6 +942,144 @@ const scenePhrasePacks = {
   }
 };
 
+const sceneCaptionTemplates = {
+  on_table: [
+    "{pet} is on this table and has promoted it to lookout tower.",
+    "I am on the table because supervision works better from up here.",
+    "This table is my stage, and everyone may begin applauding."
+  ],
+  on_couch: [
+    "{pet} is on the couch and has chosen maximum comfort.",
+    "I am on this couch because it is my soft headquarters.",
+    "I found the couch, so the meeting is officially cozy."
+  ],
+  on_bed: [
+    "{pet} is on the bed and doing advanced nap research.",
+    "I am on this bed for serious snoozing research.",
+    "I am on the bed because softness requires leadership."
+  ],
+  near_food: [
+    "{pet} is near the food and pretending to be casual.",
+    "I am close to the snacks for important scientific reasons.",
+    "I am near this food because it needs a brave taste inspector."
+  ],
+  near_toy: [
+    "{pet} is near the toy and ready for dramatic playtime.",
+    "I am near this toy because immediate silliness is required.",
+    "I am near the toy so someone understands the assignment."
+  ],
+  near_computer: [
+    "{pet} is near the computer and managing productivity.",
+    "I am helping with computer work by being impossible to ignore.",
+    "This screen needs more pet supervision."
+  ],
+  with_person: [
+    "{pet} is with a human and clearly supervising them.",
+    "I brought my human into the photo for emotional support.",
+    "This person is doing well because I am nearby."
+  ],
+  floor: [
+    "{pet} is on the floor and conducting ground-level business.",
+    "I am on the floor because this is where the important smells live.",
+    "This floor has been claimed for pet operations."
+  ],
+  window: [
+    "{pet} is by the window and monitoring the view.",
+    "I am watching the window like tiny neighborhood security.",
+    "This window has excellent things to stare at."
+  ],
+  crate: [
+    "{pet} is near the crate and reviewing den policy.",
+    "This crate situation has been inspected by management.",
+    "I am near the crate, but I would like to discuss benefits."
+  ],
+  leash: [
+    "{pet} is near the leash and thinking about adventures.",
+    "I saw the leash, so walk hopes are rising quickly.",
+    "This leash has awakened my outdoor feelings."
+  ],
+  bowl: [
+    "{pet} is near the bowl and expecting excellent service.",
+    "I found the bowl and would like to file a refill request.",
+    "This bowl is the emotional center of the photo."
+  ],
+  blanket: [
+    "{pet} is on the blanket and accepting cozy compliments.",
+    "This blanket has been claimed by the softness department.",
+    "I am on the blanket because comfort needs a professional."
+  ],
+  rug: [
+    "{pet} is on the rug and making it look important.",
+    "This rug is my fancy floor island.",
+    "I am on the rug because my paws chose luxury."
+  ],
+  table: [
+    "{pet} spotted the table and is considering a promotion.",
+    "This table is suspiciously useful for pet business.",
+    "I have important table-related opinions."
+  ],
+  food: [
+    "{pet} spotted food and is suddenly very focused.",
+    "This snack situation has my full attention.",
+    "I see food, so I am becoming extremely polite."
+  ],
+  couch: [
+    "{pet} spotted the couch and is planning comfort.",
+    "This couch looks like it needs a pet-shaped decoration.",
+    "I have cozy plans for that couch."
+  ],
+  bed: [
+    "{pet} spotted the bed and is thinking about naps.",
+    "That bed appears ready for my official inspection.",
+    "I see a bed, so my schedule is suddenly full."
+  ],
+  person: [
+    "{pet} spotted a human and is managing them carefully.",
+    "This human looks trainable and possibly snack-adjacent.",
+    "I see my person, so this photo has emotional value."
+  ],
+  computer: [
+    "{pet} spotted the computer and is ready to help badly.",
+    "This computer clearly needs more pet opinions.",
+    "I see a screen, so I will improve the meeting."
+  ],
+  toy: [
+    "{pet} spotted a toy and has entered play mode.",
+    "This toy is about to become the main character.",
+    "I see the toy, and my tiny plan is working."
+  ],
+  outside: [
+    "{pet} is outside and collecting fresh-air information.",
+    "This outdoor scene has many smells to consider.",
+    "I am outside, so adventure paperwork has begun."
+  ],
+  vehicle: [
+    "{pet} spotted a vehicle and is thinking travel thoughts.",
+    "This ride may require snacks and window access.",
+    "I see transportation and have questions about destinations."
+  ],
+  plant: [
+    "{pet} spotted a plant and is judging the leaves.",
+    "This plant has entered my inspection zone.",
+    "I am reviewing the leafy situation very seriously."
+  ],
+  bag: [
+    "{pet} spotted a bag and is checking for trip supplies.",
+    "This bag may contain snacks, secrets, or both.",
+    "I see the bag, so I am preparing for portable mischief."
+  ],
+  bathroom: [
+    "{pet} is in the bathroom and questioning the water choices.",
+    "This bathroom has suspicious splash potential.",
+    "I am reviewing the wet-room situation with concern."
+  ],
+  closeup: [
+    "{pet} is very close to the camera with an important face.",
+    "My face is filling the frame because the people deserve it.",
+    "This close-up is my official tiny announcement."
+  ]
+};
+
 function allMoodKeys() {
   return ["food", "royalty", "chaos", "nap", "dramatic", "compliment", "birthday", "morning", "apology", "holiday", "hungry", "sleepy", "guilty", "excited", "fancy", "confused", "boss"];
 }
@@ -984,6 +1123,8 @@ function selectedMood() {
 
 function buildPhraseOptions(count) {
   const options = [];
+  const precise = personalizePhrase(preciseScenePhrase());
+  if (precise && !isReportedPhrase(precise)) options.push(precise);
   const mood = selectedMood();
   const attempts = count * 14;
   for (let index = 0; index < attempts && options.length < count; index++) {
@@ -1007,6 +1148,34 @@ function buildContextPhrase(mood, short = false) {
   const base = pick([...(pack[state.pet] || []), ...(pack.either || [])]);
   if (short) return shortenContextPhrase(tag, base);
   return adaptPhraseForMood(base, mood, tag);
+}
+
+function preciseScenePhrase(short = false) {
+  if (!state.sceneTags.length) return "";
+  const detail = bestSceneDetail();
+  if (!detail) return "";
+  if (short) return shortenContextPhrase(detail.tag, "");
+  const templates = sceneCaptionTemplates[detail.tag] || sceneCaptionTemplates[detail.baseTag];
+  if (!templates?.length) return "";
+  return fillSceneTemplate(pick(templates), detail);
+}
+
+function bestSceneDetail() {
+  const priority = ["on_table", "on_couch", "on_bed", "near_food", "bowl", "near_toy", "near_computer", "with_person", "floor", "window", "crate", "leash", "blanket", "rug", "food", "toy", "computer", "person", "table", "couch", "bed", "outside", "vehicle", "plant", "bag", "bathroom", "closeup"];
+  const details = state.sceneDetails.length ? state.sceneDetails : state.sceneTags.map((tag) => ({ tag, baseTag: tag, label: displaySceneTag(tag) }));
+  return priority
+    .map((tag) => details.find((detail) => detail.tag === tag))
+    .find(Boolean) || details[0];
+}
+
+function fillSceneTemplate(template, detail) {
+  const pet = petLabel();
+  const object = detail?.label || displaySceneTag(detail?.tag || "");
+  return template
+    .replaceAll("{pet}", pet)
+    .replaceAll("{object}", object)
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function fallbackPhrase() {
@@ -1847,6 +2016,7 @@ function loadFile(file) {
       state.detection = null;
       state.warning = "";
       state.sceneTags = [];
+      state.sceneDetails = [];
       state.stickers = [];
       state.strokes = [];
       state.viewOriginal = false;
@@ -2222,6 +2392,7 @@ function loadGalleryImage(dataUrl) {
     state.detection = null;
     state.warning = "";
     state.sceneTags = [];
+    state.sceneDetails = [];
     state.manual = null;
     state.stickers = [];
     state.strokes = [];
@@ -2261,6 +2432,7 @@ async function identifyPet(image) {
       state.pet = pet.class;
       state.detection = pet;
       state.sceneTags = sceneTagsFromPredictions(predictions, pet);
+      state.sceneDetails = sceneDetailsFromPredictions(predictions, pet, state.sceneTags);
       state.warning = "";
       setActivePet(pet.class);
       const sceneNote = state.sceneTags.length ? ` Scene clues: ${state.sceneTags.slice(0, 3).map(displaySceneTag).join(", ")}.` : "";
@@ -2273,6 +2445,7 @@ async function identifyPet(image) {
       state.pet = "either";
       state.detection = null;
       state.sceneTags = [];
+      state.sceneDetails = [];
       state.warning = "That's not a pet. Try a cat or dog photo.";
       setActivePet("either");
       setDetectorStatus("That's not a pet. Try a cat or dog photo.", "warning");
@@ -2282,12 +2455,14 @@ async function identifyPet(image) {
 
     state.detection = null;
     state.sceneTags = [];
+    state.sceneDetails = [];
     state.warning = "I can't find a cat or dog yet. Try a clearer pet photo.";
     setDetectorStatus("I can't find a cat or dog yet. Try a clearer pet photo.", "warning");
     nextPhrase();
   } catch (error) {
     state.detection = null;
     state.sceneTags = [];
+    state.sceneDetails = [];
     setDetectorStatus("Pet spotting is unavailable right now, but you can still make bubbles manually.", "warning");
     draw();
   }
@@ -2327,6 +2502,77 @@ function sceneTagsFromPredictions(predictions, pet) {
   }
 
   return [...tagSet];
+}
+
+function sceneDetailsFromPredictions(predictions, pet, tags = sceneTagsFromPredictions(predictions, pet)) {
+  const objects = predictions.filter((item) => item !== pet);
+  return tags.map((tag) => ({
+    tag,
+    baseTag: baseTagForScene(tag),
+    label: labelForSceneObject(tag, objects),
+    confidence: sceneConfidence(tag, objects)
+  })).sort((a, b) => scenePriority(a.tag) - scenePriority(b.tag) || b.confidence - a.confidence);
+}
+
+function baseTagForScene(tag) {
+  const baseTags = {
+    on_table: "table",
+    on_couch: "couch",
+    on_bed: "bed",
+    near_food: "food",
+    near_toy: "toy",
+    near_computer: "computer",
+    with_person: "person"
+  };
+  return baseTags[tag] || tag;
+}
+
+function labelForSceneObject(tag, objects) {
+  const labels = {
+    on_table: "table",
+    on_couch: "couch",
+    on_bed: "bed",
+    near_food: strongestLabel(objects, ["bowl", "pizza", "cake", "donut", "sandwich", "hot dog", "apple", "banana", "orange", "carrot", "broccoli", "cup", "fork", "knife", "spoon"]) || "food",
+    near_toy: strongestLabel(objects, ["sports ball", "frisbee", "teddy bear", "baseball bat", "baseball glove", "skateboard"]) || "toy",
+    near_computer: strongestLabel(objects, ["laptop", "keyboard", "mouse", "cell phone", "tv", "remote"]) || "computer",
+    with_person: "human",
+    floor: "floor",
+    window: "window",
+    crate: "crate",
+    leash: "leash",
+    bowl: "bowl",
+    blanket: "blanket",
+    rug: "rug",
+    table: "table",
+    food: strongestLabel(objects, ["bowl", "pizza", "cake", "donut", "sandwich", "hot dog", "apple", "banana", "orange", "carrot", "broccoli", "cup", "fork", "knife", "spoon"]) || "food",
+    couch: strongestLabel(objects, ["couch", "chair"]) || "couch",
+    bed: "bed",
+    person: "human",
+    computer: strongestLabel(objects, ["laptop", "keyboard", "mouse", "cell phone", "tv", "remote"]) || "computer",
+    toy: strongestLabel(objects, ["sports ball", "frisbee", "teddy bear", "baseball bat", "baseball glove", "skateboard"]) || "toy",
+    outside: strongestLabel(objects, ["bench", "umbrella", "kite", "surfboard", "skis", "snowboard"]) || "outside",
+    vehicle: strongestLabel(objects, ["car", "truck", "bus", "train", "boat", "bicycle", "motorcycle", "airplane"]) || "vehicle",
+    plant: "plant",
+    bag: strongestLabel(objects, ["backpack", "handbag", "suitcase"]) || "bag",
+    bathroom: strongestLabel(objects, ["toilet", "sink", "toothbrush", "hair drier"]) || "bathroom",
+    closeup: "close-up"
+  };
+  return labels[tag] || displaySceneTag(tag);
+}
+
+function strongestLabel(objects, classNames) {
+  return findStrongObject(objects, classNames)?.class;
+}
+
+function sceneConfidence(tag, objects) {
+  const label = labelForSceneObject(tag, objects);
+  return objects.find((item) => item.class === label)?.score || 1;
+}
+
+function scenePriority(tag) {
+  const priority = ["on_table", "on_couch", "on_bed", "near_food", "bowl", "near_toy", "near_computer", "with_person", "floor", "window", "crate", "leash", "blanket", "rug", "food", "toy", "computer", "person", "table", "couch", "bed", "outside", "vehicle", "plant", "bag", "bathroom", "closeup"];
+  const index = priority.indexOf(tag);
+  return index === -1 ? priority.length : index;
 }
 
 function addRelationshipTags(tagSet, objects, petBox) {

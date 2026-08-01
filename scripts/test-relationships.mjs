@@ -12,6 +12,13 @@ const functionNames = [
   "overlapLength",
   "boxOverlapArea",
   "addTagForAny",
+  "sceneDetailsFromPredictions",
+  "baseTagForScene",
+  "labelForSceneObject",
+  "strongestLabel",
+  "sceneConfidence",
+  "scenePriority",
+  "displaySceneTag",
   "scoreDetection"
 ];
 const functions = functionNames.map((name) => {
@@ -99,6 +106,10 @@ cases.forEach((item) => {
   item.expected.forEach((tag) => {
     if (!tags.includes(tag)) failures.push(`${item.name}: expected ${tag}, got ${tags.join(", ")}`);
   });
+  const details = sandbox.sceneDetailsFromPredictions(item.predictions, item.pet, tags);
+  if (!details.length) failures.push(`${item.name}: expected scene details`);
+  const firstExpected = item.expected[0];
+  if (details[0]?.tag !== firstExpected) failures.push(`${item.name}: expected first detail ${firstExpected}, got ${details[0]?.tag}`);
 });
 
 const result = { casesChecked: cases.length, failures };

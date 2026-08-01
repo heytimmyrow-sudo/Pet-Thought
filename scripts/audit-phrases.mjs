@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 const source = readFileSync("game.js", "utf8");
-const names = ["phrases", "sharedPacks", "scenePhrasePacks", "shortPhrases"];
+const names = ["phrases", "sharedPacks", "scenePhrasePacks", "sceneCaptionTemplates", "shortPhrases"];
 const sceneKeywords = {
   on_table: /on.+table|table.+on|surface|stage|elevated|climbed|high|visibility/i,
   on_couch: /on.+couch|couch.+on|cushion|comfort|snuggle|cozy|furniture/i,
@@ -115,6 +115,17 @@ Object.entries(data.scenePhrasePacks).forEach(([tag, pack]) => {
   });
 });
 
+Object.entries(data.sceneCaptionTemplates).forEach(([tag, phrases]) => {
+  const sceneRule = sceneKeywords[tag];
+  if (!sceneRule) failures.push(`sceneCaptionTemplates.${tag}: missing keyword rule`);
+  phrases.forEach((phrase, index) => {
+    checkPhrase(`sceneCaptionTemplates.${tag}[${index}]`, phrase, failures);
+    if (sceneRule && !sceneRule.test(phrase)) {
+      failures.push(`sceneCaptionTemplates.${tag}[${index}]: does not clearly reference ${tag}: ${phrase}`);
+    }
+  });
+});
+
 const pets = ["cat", "dog", "either"];
 const moods = ["random", "food", "royalty", "chaos", "nap", "dramatic", "compliment", "birthday", "morning", "apology", "holiday", "hungry", "sleepy", "guilty", "excited", "fancy", "confused", "boss"];
 const sceneTags = Object.keys(data.scenePhrasePacks);
@@ -152,6 +163,7 @@ const summary = {
   regularPetPhrases: Object.values(data.phrases).flatMap((moodPacks) => Object.values(moodPacks).flat()).length,
   sharedPhrases: Object.values(data.sharedPacks).flat().length,
   scenePhrases: Object.values(data.scenePhrasePacks).flatMap((pack) => Object.values(pack).flat()).length,
+  sceneCaptionTemplates: Object.values(data.sceneCaptionTemplates).flat().length,
   shortPhrases: data.shortPhrases.length,
   generatorCasesChecked: pets.length * moods.length + sceneTags.length * pets.length * moods.length,
   failures
