@@ -21,6 +21,7 @@ const sizeRange = document.querySelector("#sizeRange");
 const textRange = document.querySelector("#textRange");
 const downloadBtn = document.querySelector("#downloadBtn");
 const clearBtn = document.querySelector("#clearBtn");
+const speakBtn = document.querySelector("#speakBtn");
 const beforeAfterBtn = document.querySelector("#beforeAfterBtn");
 const copyLinkBtn = document.querySelector("#copyLinkBtn");
 const qrBtn = document.querySelector("#qrBtn");
@@ -46,6 +47,12 @@ const doodleColor = document.querySelector("#doodleColor");
 const doodleSize = document.querySelector("#doodleSize");
 const undoDoodleBtn = document.querySelector("#undoDoodleBtn");
 const clearDoodleBtn = document.querySelector("#clearDoodleBtn");
+const cameraModal = document.querySelector("#cameraModal");
+const cameraPreview = document.querySelector("#cameraPreview");
+const cameraCloseBtn = document.querySelector("#cameraCloseBtn");
+const cameraCancelBtn = document.querySelector("#cameraCancelBtn");
+const captureBtn = document.querySelector("#captureBtn");
+const cameraHelp = document.querySelector("#cameraHelp");
 
 const state = {
   image: null,
@@ -78,6 +85,7 @@ const state = {
 let detectorPromise = null;
 let dragMode = null;
 let activeStroke = null;
+let cameraStream = null;
 const galleryKey = "petThoughtGallery";
 const reportedPhraseKey = "petThoughtReportedPhrases";
 const publicAppUrl = "https://new-games-jcrow.timmyrow.chatgpt.site";
@@ -1089,6 +1097,7 @@ function pick(array) {
 }
 
 function nextPhrase(short = false) {
+  stopSpeaking();
   if (state.warning) {
     state.awaitingCaptionChoice = false;
     state.phrase = state.warning;
@@ -1326,6 +1335,7 @@ function renderPhraseChoices(options) {
     button.textContent = option;
     button.classList.toggle("active", option === state.phrase);
     button.addEventListener("click", () => {
+      stopSpeaking();
       state.awaitingCaptionChoice = false;
       state.phrase = option;
       phraseInput.value = option;
@@ -1845,6 +1855,52 @@ async function copyAppLink() {
   }
 }
 
+function speakPetPhrase() {
+  const text = state.phrase.trim();
+  if (!text || state.warning) {
+    setDetectorStatus("Add a pet phrase first, then the pet voice can read it.", "warning");
+    return;
+  }
+  if (!("speechSynthesis" in window) || !window.SpeechSynthesisUtterance) {
+    setDetectorStatus("This browser does not support pet voice playback.", "warning");
+    return;
+  }
+  if (window.speechSynthesis.speaking) {
+    stopSpeaking();
+    return;
+  }
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = state.pet === "dog" ? 1.05 : .98;
+  utterance.pitch = state.pet === "cat" ? 1.35 : state.pet === "dog" ? 1.12 : 1.2;
+  utterance.volume = 1;
+  const voice = choosePetVoice();
+  if (voice) utterance.voice = voice;
+  utterance.addEventListener("start", () => {
+    speakBtn.textContent = "Stop Voice";
+    setDetectorStatus("Pet voice is reading the bubble.", "success");
+  });
+  utterance.addEventListener("end", () => {
+    speakBtn.textContent = "Pet Voice";
+  });
+  utterance.addEventListener("error", () => {
+    speakBtn.textContent = "Pet Voice";
+    setDetectorStatus("Pet voice could not play in this browser.", "warning");
+  });
+  window.speechSynthesis.speak(utterance);
+}
+
+function choosePetVoice() {
+  const voices = window.speechSynthesis.getVoices?.() || [];
+  if (!voices.length) return null;
+  const preferred = voices.find((voice) => /female|samantha|zira|google us english/i.test(voice.name));
+  return preferred || voices.find((voice) => /^en[-_]/i.test(voice.lang)) || voices[0];
+}
+
+function stopSpeaking() {
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  if (speakBtn) speakBtn.textContent = "Pet Voice";
+}
+
 function showQrCode() {
   renderQrCode(qrCodeBox, qrUrlText, 7);
   qrModal.classList.remove("hidden");
@@ -2009,35 +2065,97 @@ canvas.addEventListener("pointercancel", () => {
 function loadFile(file) {
   if (!file || !file.type.startsWith("image/")) return;
   const reader = new FileReader();
-  reader.addEventListener("load", () => {
-    const image = new Image();
-    image.addEventListener("load", () => {
-      state.image = image;
-      state.detection = null;
-      state.warning = "";
-      state.sceneTags = [];
-      state.sceneDetails = [];
-      state.stickers = [];
-      state.strokes = [];
-      state.viewOriginal = false;
-      state.doodleMode = false;
-      state.manual = null;
-      state.awaitingCaptionChoice = false;
-      state.phrase = "";
-      state.phraseOptions = [];
-      setTailMode(false);
-      phraseInput.value = "";
-      renderPhraseChoices([]);
-      beforeAfterBtn.textContent = "Original";
-      doodleBtn.classList.remove("active");
-      setPhotoVisible(true);
-      emptyState.classList.add("hidden");
-      draw();
-      identifyPet(image);
-    });
-    image.src = reader.result;
-  });
+  reader.addEventListener("load", () => loadImageDataUrl(reader.result));
   reader.readAsDataURL(file);
+}
+
+function loadImageDataUrl(dataUrl) {
+  const image = new Image();
+  image.addEventListener("load", () => {
+    state.image = image;
+    state.detection = null;
+    state.warning = "";
+    state.sceneTags = [];
+    state.sceneDetails = [];
+    state.stickers = [];
+    state.strokes = [];
+    state.viewOriginal = false;
+    state.doodleMode = false;
+    state.manual = null;
+    state.awaitingCaptionChoice = false;
+    state.phrase = "";
+    state.phraseOptions = [];
+    setTailMode(false);
+    stopSpeaking();
+    phraseInput.value = "";
+    renderPhraseChoices([]);
+    beforeAfterBtn.textContent = "Original";
+    doodleBtn.classList.remove("active");
+    setPhotoVisible(true);
+    emptyState.classList.add("hidden");
+    draw();
+    identifyPet(image);
+  });
+  image.src = dataUrl;
+}
+
+async function openCamera() {
+  stopSpeaking();
+  if (prefersDeviceCameraApp()) {
+    cameraInput.click();
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    cameraInput.click();
+    return;
+  }
+  try {
+    cameraHelp.textContent = "Starting camera...";
+    cameraModal.classList.remove("hidden");
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "environment",
+        width: { ideal: 1280 },
+        height: { ideal: 960 }
+      },
+      audio: false
+    });
+    cameraPreview.srcObject = cameraStream;
+    await cameraPreview.play();
+    cameraHelp.textContent = "Point the camera at your pet, then capture.";
+  } catch (error) {
+    closeCamera();
+    cameraInput.click();
+    setDetectorStatus("Camera access was not available, so choose or take a picture from your device.", "warning");
+  }
+}
+
+function prefersDeviceCameraApp() {
+  return window.matchMedia?.("(pointer: coarse)")?.matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function closeCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach((track) => track.stop());
+    cameraStream = null;
+  }
+  cameraPreview.srcObject = null;
+  cameraModal.classList.add("hidden");
+}
+
+function captureCameraPhoto() {
+  if (!cameraStream || !cameraPreview.videoWidth || !cameraPreview.videoHeight) {
+    setDetectorStatus("Camera is still warming up. Try again in a second.", "warning");
+    return;
+  }
+  const snapshot = document.createElement("canvas");
+  snapshot.width = cameraPreview.videoWidth;
+  snapshot.height = cameraPreview.videoHeight;
+  const snapshotCtx = snapshot.getContext("2d");
+  snapshotCtx.drawImage(cameraPreview, 0, 0, snapshot.width, snapshot.height);
+  const dataUrl = snapshot.toDataURL("image/png");
+  closeCamera();
+  loadImageDataUrl(dataUrl);
 }
 
 photoInput.addEventListener("change", (event) => loadFile(event.target.files[0]));
@@ -2048,12 +2166,7 @@ choosePhotoBtn.addEventListener("keydown", (event) => {
     photoInput.click();
   }
 });
-cameraBtn.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    cameraInput.click();
-  }
-});
+cameraBtn.addEventListener("click", () => openCamera());
 
 petNameInput.addEventListener("input", () => {
   state.petName = petNameInput.value.trim();
@@ -2120,6 +2233,7 @@ moodSelect.addEventListener("change", () => {
   nextPhrase();
 });
 phraseInput.addEventListener("input", () => {
+  stopSpeaking();
   state.awaitingCaptionChoice = false;
   state.phrase = phraseInput.value;
   draw();
@@ -2171,6 +2285,10 @@ clearDoodleBtn.addEventListener("click", () => {
   draw();
 });
 
+speakBtn.addEventListener("click", () => {
+  speakPetPhrase();
+});
+
 beforeAfterBtn.addEventListener("click", () => {
   if (!state.image) return;
   setTailMode(false);
@@ -2197,6 +2315,7 @@ qrModal.addEventListener("click", (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !qrModal.classList.contains("hidden")) hideQrCode();
+  if (event.key === "Escape" && !cameraModal.classList.contains("hidden")) closeCamera();
 });
 
 copyQrLinkBtn.addEventListener("click", async () => {
@@ -2282,6 +2401,13 @@ shareAppBtn.addEventListener("click", async () => {
   await copyAppLink();
 });
 
+cameraCloseBtn.addEventListener("click", () => closeCamera());
+cameraCancelBtn.addEventListener("click", () => closeCamera());
+captureBtn.addEventListener("click", () => captureCameraPhoto());
+cameraModal.addEventListener("click", (event) => {
+  if (event.target === cameraModal) closeCamera();
+});
+
 clearBtn.addEventListener("click", () => {
   state.image = null;
   state.detection = null;
@@ -2296,6 +2422,7 @@ clearBtn.addEventListener("click", () => {
   state.doodleMode = false;
   state.awaitingCaptionChoice = false;
   setTailMode(false);
+  stopSpeaking();
   activeStroke = null;
   phraseInput.value = "";
   renderPhraseChoices([]);

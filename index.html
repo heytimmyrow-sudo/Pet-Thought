@@ -43,7 +43,7 @@
             </ol>
             <div class="empty-actions">
               <label class="empty-photo" id="choosePhotoBtn" for="photoInput" role="button" tabindex="0" aria-label="Choose photo">Choose Photo</label>
-              <label class="empty-camera" id="cameraBtn" for="cameraInput" role="button" tabindex="0" aria-label="Open camera">Take Picture</label>
+              <button class="empty-camera" id="cameraBtn" type="button" aria-label="Open camera">Take Picture</button>
             </div>
           </div>
         </div>
@@ -195,6 +195,7 @@
 
         <div class="actions">
           <button class="btn" id="clearBtn" type="button">Clear Photo</button>
+          <button class="btn photo-only" id="speakBtn" type="button">Pet Voice</button>
           <button class="btn photo-only" id="beforeAfterBtn" type="button">Original</button>
           <button class="btn" id="copyLinkBtn" type="button">Copy Link</button>
           <button class="btn" id="qrBtn" type="button">QR Code</button>
@@ -214,6 +215,20 @@
         <button class="btn primary" id="copyQrLinkBtn" type="button">Copy Link</button>
         <button class="btn" id="downloadQrBtn" type="button">Download QR</button>
       </div>
+    </div>
+  </div>
+  <div class="camera-modal hidden" id="cameraModal" role="dialog" aria-modal="true" aria-labelledby="cameraTitle">
+    <div class="camera-card">
+      <div class="camera-head">
+        <h2 id="cameraTitle">Take a picture</h2>
+        <button class="qr-close" id="cameraCloseBtn" type="button" aria-label="Close camera">x</button>
+      </div>
+      <video id="cameraPreview" autoplay playsinline muted></video>
+      <div class="camera-actions">
+        <button class="btn primary" id="captureBtn" type="button">Use This Picture</button>
+        <button class="btn" id="cameraCancelBtn" type="button">Cancel</button>
+      </div>
+      <p id="cameraHelp">Allow camera access, then capture your pet.</p>
     </div>
   </div>
   <script src="qr-code.js?v=35"></script>
