@@ -47,6 +47,7 @@ const doodleColor = document.querySelector("#doodleColor");
 const doodleSize = document.querySelector("#doodleSize");
 const undoDoodleBtn = document.querySelector("#undoDoodleBtn");
 const clearDoodleBtn = document.querySelector("#clearDoodleBtn");
+const voiceButtons = document.querySelectorAll("[data-voice]");
 const cameraModal = document.querySelector("#cameraModal");
 const cameraPreview = document.querySelector("#cameraPreview");
 const cameraCloseBtn = document.querySelector("#cameraCloseBtn");
@@ -58,6 +59,7 @@ const state = {
   image: null,
   pet: "cat",
   bubble: "thought",
+  voiceStyle: "cute",
   style: "classic",
   position: "auto",
   mood: "random",
@@ -78,6 +80,8 @@ const state = {
   viewOriginal: false,
   doodleMode: false,
   tailMode: false,
+  speaking: false,
+  talkStartedAt: 0,
   suppressEditHandles: false,
   awaitingCaptionChoice: false
 };
@@ -86,6 +90,7 @@ let detectorPromise = null;
 let dragMode = null;
 let activeStroke = null;
 let cameraStream = null;
+let talkAnimationFrame = null;
 const galleryKey = "petThoughtGallery";
 const reportedPhraseKey = "petThoughtReportedPhrases";
 const publicAppUrl = "https://new-games-jcrow.timmyrow.chatgpt.site";
@@ -1462,6 +1467,13 @@ function drawBubble(width, height) {
   const bubbleHeight = Math.max((style === "sticker" ? 130 : 160) * scale, lines.length * baseFont * 1.18 + 74);
   const pos = bubblePosition(width, height, bubbleWidth, bubbleHeight, margin);
   state.lastBubble = pos;
+  const talkPulse = state.speaking ? Math.sin((performance.now() - state.talkStartedAt) / 115) : 0;
+  const talkScale = state.speaking ? 1 + talkPulse * .018 : 1;
+  const drawX = pos.x + bubbleWidth * (1 - talkScale) / 2;
+  const drawY = pos.y + bubbleHeight * (1 - talkScale) / 2;
+  const drawWidth = bubbleWidth * talkScale;
+  const drawHeight = bubbleHeight * talkScale;
+  const drawPos = { ...pos, x: drawX, y: drawY, width: drawWidth, height: drawHeight };
 
   ctx.save();
   ctx.shadowColor = style === "whisper" ? "rgba(36, 31, 33, .16)" : "rgba(36, 31, 33, .28)";
@@ -1472,30 +1484,31 @@ function drawBubble(width, height) {
   ctx.lineWidth = style === "whisper" ? 4 : style === "comic" ? 10 : 7;
 
   if (state.bubble === "speech") {
-    speechTail(pos);
+    speechTail(drawPos);
   } else {
-    thoughtDots(pos);
+    thoughtDots(drawPos);
   }
 
   if (style === "cloud") {
-    cloudBubble(pos.x, pos.y, bubbleWidth, bubbleHeight);
+    cloudBubble(drawX, drawY, drawWidth, drawHeight);
   } else if (style === "comic") {
-    burstBubble(pos.x, pos.y, bubbleWidth, bubbleHeight);
+    burstBubble(drawX, drawY, drawWidth, drawHeight);
   } else if (style === "sticker") {
-    roundedRect(pos.x, pos.y, bubbleWidth, bubbleHeight, 22);
+    roundedRect(drawX, drawY, drawWidth, drawHeight, 22);
   } else if (style === "news") {
-    roundedRect(pos.x, pos.y, bubbleWidth, bubbleHeight, 18);
+    roundedRect(drawX, drawY, drawWidth, drawHeight, 18);
   } else {
-    roundedRect(pos.x, pos.y, bubbleWidth, bubbleHeight, style === "whisper" ? 26 : 42);
+    roundedRect(drawX, drawY, drawWidth, drawHeight, style === "whisper" ? 26 : 42);
   }
   ctx.fill();
   ctx.stroke();
   if (style === "news") {
     ctx.fillStyle = "#2d2728";
-    ctx.fillRect(pos.x + 22, pos.y + 20, bubbleWidth - 44, 7);
-    ctx.fillRect(pos.x + 22, pos.y + bubbleHeight - 27, bubbleWidth - 44, 7);
+    ctx.fillRect(drawX + 22, drawY + 20, drawWidth - 44, 7);
+    ctx.fillRect(drawX + 22, drawY + drawHeight - 27, drawWidth - 44, 7);
   }
   ctx.restore();
+  if (state.speaking) drawSoundMarks(drawPos, talkPulse);
 
   ctx.fillStyle = "#211d1e";
   ctx.font = `${style === "whisper" ? 800 : 900} ${baseFont}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial`;
@@ -1503,9 +1516,9 @@ function drawBubble(width, height) {
   ctx.textBaseline = "middle";
 
   const lineHeight = baseFont * 1.18;
-  const firstY = pos.y + bubbleHeight / 2 - ((lines.length - 1) * lineHeight) / 2;
+  const firstY = drawY + drawHeight / 2 - ((lines.length - 1) * lineHeight) / 2;
   lines.forEach((line, index) => {
-    ctx.fillText(line, pos.x + bubbleWidth / 2, firstY + index * lineHeight);
+    ctx.fillText(line, drawX + drawWidth / 2, firstY + index * lineHeight);
   });
 
   if (shouldDrawEditHandles()) drawEditHandles(pos);
@@ -1542,6 +1555,27 @@ function drawEditHandles(pos) {
     ctx.strokeStyle = "rgba(47, 159, 149, .62)";
     ctx.stroke();
     drawEditHandle(pos.targetX, pos.targetY, "#f8c84e", "#2d2728", 20);
+  }
+  ctx.restore();
+}
+
+function drawSoundMarks(pos, pulse) {
+  const side = pos.x + pos.width / 2 < canvas.width / 2 ? 1 : -1;
+  const originX = side === 1 ? pos.x + pos.width + 22 : pos.x - 22;
+  const originY = pos.y + pos.height * .32;
+  ctx.save();
+  ctx.strokeStyle = "rgba(47, 159, 149, .86)";
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.shadowColor = "rgba(255, 255, 255, .9)";
+  ctx.shadowBlur = 7;
+  for (let index = 0; index < 3; index++) {
+    const radius = 18 + index * 15 + Math.max(0, pulse) * 5;
+    const start = side === 1 ? -.62 : Math.PI + -.62;
+    const end = side === 1 ? .62 : Math.PI + .62;
+    ctx.beginPath();
+    ctx.arc(originX, originY, radius, start, end, side === -1);
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -1870,23 +1904,37 @@ function speakPetPhrase() {
     return;
   }
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = state.pet === "dog" ? 1.05 : .98;
-  utterance.pitch = state.pet === "cat" ? 1.35 : state.pet === "dog" ? 1.12 : 1.2;
+  const style = voiceStyleSettings();
+  utterance.rate = style.rate;
+  utterance.pitch = style.pitch;
   utterance.volume = 1;
   const voice = choosePetVoice();
   if (voice) utterance.voice = voice;
   utterance.addEventListener("start", () => {
     speakBtn.textContent = "Stop Voice";
-    setDetectorStatus("Pet voice is reading the bubble.", "success");
+    state.speaking = true;
+    state.talkStartedAt = performance.now();
+    startTalkAnimation();
+    setDetectorStatus(`${style.label} pet voice is reading the bubble.`, "success");
   });
   utterance.addEventListener("end", () => {
-    speakBtn.textContent = "Pet Voice";
+    stopTalkAnimation();
   });
   utterance.addEventListener("error", () => {
-    speakBtn.textContent = "Pet Voice";
+    stopTalkAnimation();
     setDetectorStatus("Pet voice could not play in this browser.", "warning");
   });
   window.speechSynthesis.speak(utterance);
+}
+
+function voiceStyleSettings() {
+  const byStyle = {
+    cute: { label: "Tiny", rate: state.pet === "dog" ? 1.06 : 1.0, pitch: state.pet === "cat" ? 1.45 : 1.24 },
+    dramatic: { label: "Dramatic", rate: .88, pitch: state.pet === "cat" ? 1.14 : .98 },
+    sleepy: { label: "Sleepy", rate: .72, pitch: state.pet === "cat" ? 1.05 : .92 },
+    excited: { label: "Excited", rate: 1.24, pitch: state.pet === "cat" ? 1.55 : 1.32 }
+  };
+  return byStyle[state.voiceStyle] || byStyle.cute;
 }
 
 function choosePetVoice() {
@@ -1898,7 +1946,30 @@ function choosePetVoice() {
 
 function stopSpeaking() {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  stopTalkAnimation();
+}
+
+function startTalkAnimation() {
+  if (talkAnimationFrame) return;
+  const tick = () => {
+    if (!state.speaking) {
+      talkAnimationFrame = null;
+      return;
+    }
+    draw();
+    talkAnimationFrame = requestAnimationFrame(tick);
+  };
+  talkAnimationFrame = requestAnimationFrame(tick);
+}
+
+function stopTalkAnimation() {
+  state.speaking = false;
+  if (talkAnimationFrame) {
+    cancelAnimationFrame(talkAnimationFrame);
+    talkAnimationFrame = null;
+  }
   if (speakBtn) speakBtn.textContent = "Pet Voice";
+  draw();
 }
 
 function showQrCode() {
@@ -2202,6 +2273,15 @@ document.querySelectorAll("[data-bubble]").forEach((button) => {
     state.bubble = button.dataset.bubble;
     document.querySelectorAll("[data-bubble]").forEach((item) => item.classList.toggle("active", item === button));
     draw();
+  });
+});
+
+voiceButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    stopSpeaking();
+    state.voiceStyle = button.dataset.voice;
+    voiceButtons.forEach((item) => item.classList.toggle("active", item === button));
+    setDetectorStatus(`${voiceStyleSettings().label} pet voice selected.`, "success");
   });
 });
 

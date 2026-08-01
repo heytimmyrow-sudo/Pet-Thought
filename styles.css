@@ -413,6 +413,9 @@ canvas {
   background: #f6efe4;
   box-shadow: inset 0 1px rgba(255, 255, 255, .76);
 }
+.voice-segmented {
+  grid-template-columns: repeat(4, 1fr);
+}
 .segmented button,
 .btn,
 select,
@@ -763,6 +766,7 @@ input[type="range"] {
     grid-template-columns: 1fr 1fr;
   }
   .position-grid { grid-template-columns: repeat(3, 62px) repeat(2, 42px); }
+  .voice-segmented { grid-template-columns: repeat(2, 1fr); }
   .sticker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .doodle-tools { grid-template-columns: 72px 44px 1fr; }
 }
